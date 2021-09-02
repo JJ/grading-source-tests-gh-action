@@ -26,7 +26,7 @@ for my $f (qw( README.md .gitignore LICENSE )) {
 # Subs
 sub doing {
   my $what = shift;
-  say "\n\t✔ Comprobando $what\n";
+  return "\n\t✔ Comprobando $what\n";
 }
 
 sub all_good {
