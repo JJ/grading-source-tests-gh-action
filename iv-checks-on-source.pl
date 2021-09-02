@@ -13,6 +13,7 @@ my $student_repo = Git->repository ( Directory => "." );
 my @repo_files = $student_repo->command("ls-files");
 
 # Objetivo 0
+say doing( "🎯 Objetivo 0" );
 for my $f (qw( README.md .gitignore LICENSE )) {
   if ( grep( $f, @repo_files) )  {
     say all_good( "$f presente" );
