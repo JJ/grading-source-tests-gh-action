@@ -3,5 +3,5 @@ description: 'Actuando sobre el fuente, lleva a cabo una serie de tests para com
 runs:
   using: 'composite'
   steps:
-    - run: ${{ github.action_path }}/iv-check-on-source.pl
+    - run: ${{ github.action_path }}/iv-checks-on-source.pl
       shell: bash
