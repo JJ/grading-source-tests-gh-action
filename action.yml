@@ -1,0 +1,6 @@
+name: 'Aplica tests sobre los fuentes IV/CC/ÁgilGRX'
+description: 'Actuando sobre el fuente, lleva a cabo una serie de tests para comprobar objetivos alcanzados'
+runs:
+  using: 'composite'
+  steps:
+    - run: ls
