@@ -22,7 +22,7 @@ my $student_repo = Git->repository ( Directory => "." );
 my @repo_files = $student_repo->command("ls-files");
 
 
-objetivo_0( @repo_files);
+objetivo_0(@repo_files);
 
 
 # Objetivos
