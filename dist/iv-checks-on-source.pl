@@ -9109,6 +9109,29 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   SUCH DAMAGES.
 GITHUB_ACTIONS
 
+$fatpacked{"Utility.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'UTILITY';
+  use GitHub::Actions;
+  
+  # Imprime cabeceras de objetivo/hito, principalmente
+  sub doing {
+    my $what = shift;
+    start_group "\t✔ Comprobando $what\n";
+  }
+  
+  # Cuando los tets van bien
+  sub all_good {
+    return "✅🍊️‍🔥 " . shift
+  }
+  
+  
+  # Cuando fallan
+  sub sorry {
+    return "🍋💥❌ " . shift
+  }
+  
+  "Yay"
+UTILITY
+
 $fatpacked{"private-Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'PRIVATE-ERROR';
   # Error.pm
   #
@@ -11183,6 +11206,10 @@ use v5.14;
 use Git;
 use GitHub::Actions;
 
+use lib "lib";
+
+use Utility;
+
 # Previa
 my $student_repo = Git->repository ( Directory => "." );
 
@@ -11190,7 +11217,7 @@ my $student_repo = Git->repository ( Directory => "." );
 my @repo_files = $student_repo->command("ls-files");
 
 # Objetivo 0
-start_group( doing( "🎯 Objetivo 0" ) );
+doing( "🎯 Objetivo 0" );
 for my $f (qw( README.md .gitignore LICENSE )) {
   if ( grep( $f, @repo_files) )  {
     say all_good( "$f presente" );
@@ -11200,16 +11227,3 @@ for my $f (qw( README.md .gitignore LICENSE )) {
 }
 end_group();
 
-# Subs
-sub doing {
-  my $what = shift;
-  return "\n\t✔ Comprobando $what\n";
-}
-
-sub all_good {
-    return "✅🍊️‍🔥 " . shift
-}
-
-sub sorry {
-    return "🍋💥❌ " . shift
-}
