@@ -12,7 +12,7 @@ use lib "lib";
 use Utility;
 
 # Fase
-my $fase = @ARGV[0] =~ /-(\d+)/;
+my $fase = $ARGV[0] =~ /-(\d+)/;
 
 
 # Previa
@@ -32,7 +32,7 @@ sub objetivo_0 {
   doing( "🎯 Objetivo 0" );
   for my $f (qw( README.md .gitignore LICENSE )) {
     if ( grep( $f, @repo_files) )  {
-      say all_good( "$f presente" );
+      say all_good( "🗄 $f presente" );
     } else {
       say sorry( "Falta $f" );
     }
