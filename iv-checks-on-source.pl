@@ -5,6 +5,7 @@ use warnings;
 use v5.14;
 
 use Git;
+use GitHub::Actions;
 
 # Previa
 my $student_repo = Git->repository ( Directory => "." );
@@ -13,7 +14,7 @@ my $student_repo = Git->repository ( Directory => "." );
 my @repo_files = $student_repo->command("ls-files");
 
 # Objetivo 0
-say doing( "🎯 Objetivo 0" );
+start_group( doing( "🎯 Objetivo 0" ) );
 for my $f (qw( README.md .gitignore LICENSE )) {
   if ( grep( $f, @repo_files) )  {
     say all_good( "$f presente" );
@@ -21,7 +22,7 @@ for my $f (qw( README.md .gitignore LICENSE )) {
     say sorry( "Falta $f" );
   }
 }
-
+end_group();
 
 # Subs
 sub doing {

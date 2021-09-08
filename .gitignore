@@ -36,3 +36,6 @@ inc/
 
 # Emacs
 *~
+
+# Fatpack
+fatlib/

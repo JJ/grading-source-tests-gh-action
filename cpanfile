@@ -1,3 +1,3 @@
 requires 'perl', '5.014001';
-requires 'GitHub::Actions';
+requires 'GitHub::Actions', '0.1.0';
 requires 'App::FatPacker';
