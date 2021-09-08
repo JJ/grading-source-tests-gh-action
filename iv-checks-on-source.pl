@@ -7,6 +7,9 @@ use v5.14;
 use Git;
 use GitHub::Actions;
 
+use File::Slurper qw(read_text);
+use YAML qw(LoadFile);
+
 use lib "lib";
 
 use Utility;
@@ -24,6 +27,19 @@ my @repo_files = $student_repo->command("ls-files");
 
 objetivo_0(@repo_files);
 
+exit if $fase == 0;
+
+# Fase 1
+my ($readme_file) = grep( /^README/, @repo_files );
+my $README =  read_text( $readme_file );
+my $iv;
+
+eval { $iv = LoadFile("iv.yaml"); };
+if ($@) {
+  error( sorry( "Hay algún problema leyendo «iv.yaml» ⤷ $_" ) );
+}
+
+
 
 # Objetivos
 sub objetivo_0 {
@@ -34,7 +50,7 @@ sub objetivo_0 {
     if ( grep( $f, @repo_files) )  {
       say all_good( "🗄 $f presente" );
     } else {
-      say sorry( "Falta $f" );
+      error( sorry( "Falta $f" ) );
     }
   }
   end_group();
