@@ -1,7 +1,12 @@
 name: 'Aplica tests sobre los fuentes IV'
 description: 'Actuando sobre el fuente, lleva a cabo una serie de tests para comprobar objetivos alcanzados'
+inputs:
+  fase:
+    description: 'Fichero en el que se ha hecho el PR == fase del proyecto'
+    required: true
+    default: 'objetivo-0.md'
 runs:
   using: 'composite'
   steps:
-    - run: ${{ github.action_path }}/dist/iv-checks-on-source.pl
+    - run: ${{ github.action_path }}/dist/iv-checks-on-source.pl ${{inputs.fase}}
       shell: bash
