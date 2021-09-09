@@ -14016,7 +14016,6 @@ use Utility;
 
 # Fase
 my ($fase) = $ARGV[0] =~ /-(\d+)/;
-say "Fase $fase";
 
 # Previa
 my $student_repo = Git->repository ( Directory => "." );
