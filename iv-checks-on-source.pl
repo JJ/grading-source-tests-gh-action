@@ -16,7 +16,7 @@ use Utility;
 
 # Fase
 my $fase = $ARGV[0] =~ /-(\d+)/;
-
+say "Fase $fase";
 
 # Previa
 my $student_repo = Git->repository ( Directory => "." );
@@ -24,10 +24,9 @@ my $student_repo = Git->repository ( Directory => "." );
 # Algunas variables
 my @repo_files = $student_repo->command("ls-files");
 
-
 objetivo_0(@repo_files);
 
-exit if $fase == 0;
+exit if $fase eq "0";
 
 # Fase 1
 my ($readme_file) = grep( /^README/, @repo_files );
