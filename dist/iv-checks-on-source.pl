@@ -14035,7 +14035,7 @@ my $iv;
 
 eval { $iv = LoadFile("iv.yaml"); };
 if ($@) {
-  error( sorry( "Hay algún problema leyendo «iv.yaml» ⤷ $_" ) );
+  error( sorry( "Hay algún problema leyendo «iv.yaml» ⤷ $@" ) );
 }
 
 
