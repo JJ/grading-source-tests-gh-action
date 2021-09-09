@@ -14015,7 +14015,7 @@ use lib "lib";
 use Utility;
 
 # Fase
-my $fase = $ARGV[0] =~ /-(\d+)/;
+my ($fase) = $ARGV[0] =~ /-(\d+)/;
 say "Fase $fase";
 
 # Previa
