@@ -14059,11 +14059,12 @@ sub objetivo_0 {
 }
 
 sub objetivo_1 {
+  doing( "🎯 Objetivo 1" );
   my $iv = shift;
   for my $k (qw(lenguaje entidad)) {
     comprueba( $iv->{$k},
-               "Clave $k está presente",
-               "Clave $k no está presente"
+               "🗝️ $k está presente",
+               "🗝️ $k no está presente"
              );
   }
 
