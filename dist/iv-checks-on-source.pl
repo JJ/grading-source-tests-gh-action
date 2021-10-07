@@ -14015,7 +14015,7 @@ use lib "lib";
 use Utility;
 
 # Fase
-my ($fase) = $ARGV[0];
+my ($fase) = $ENV{'objetivo'};
 say "Fase $fase";
 
 # Previa
