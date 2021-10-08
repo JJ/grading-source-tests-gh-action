@@ -9069,6 +9069,7 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   
   # Module implementation here
   our %github;
+  our $EXIT_CODE = 0;
   
   our @EXPORT = qw( %github set_output set_env debug error warning set_failed command_on_file error_on_file warning_on_file start_group end_group);
   
@@ -9081,7 +9082,7 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
     }
   }
   
-  use version; our $VERSION = qv('0.1.0');
+  use version; our $VERSION = qv('0.1.1');
   
   sub set_output {
     carp "Need name and value" unless @_;
@@ -9104,6 +9105,7 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   
   sub error {
     my $error_message = shift;
+    $EXIT_CODE = 1;
     say "::error::$error_message"
   }
   
@@ -9147,6 +9149,10 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
     exit( 1);
   }
   
+  sub exit_action {
+    exit( $EXIT_CODE );
+  }
+  
   "Action!"; # Magic true value required at end of module
   __END__
   
@@ -9175,6 +9181,12 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   
       # Set environment variable value
       set_env("FOO", "BAR");
+  
+      # Produces an error and sets exit code to 1
+      error( "FOO has happened" )
+  
+      # Exits with error if that's the case
+      exit_action();
   
   Install this module within a GitHub action
   
@@ -9245,11 +9257,16 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   
   =head2 start_group( $group_name )
   
-  Starts a group in the logs, grouping the following messages. Corresponds to L<C<group>|https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#grouping-log-lines>.
+  Starts a group in the logs, grouping the following messages. Corresponds to
+  L<C<group>|https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#grouping-log-lines>.
   
   =head2 end_group
   
   Ends current log grouping.
+  
+  =head2 exit_action
+  
+  Exits with the exit code generated during run
   
   =head1 CONFIGURATION AND ENVIRONMENT
   
@@ -14041,6 +14058,8 @@ if ($@) {
 }
 
 objetivo_1( $iv, \@repo_files );
+
+exit_action();
 
 
 # Objetivos

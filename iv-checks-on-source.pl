@@ -42,6 +42,8 @@ if ($@) {
 
 objetivo_1( $iv, \@repo_files );
 
+exit_action();
+
 
 # Objetivos
 sub objetivo_0 {
