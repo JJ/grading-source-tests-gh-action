@@ -8394,7 +8394,7 @@ use Utility;
 
 # Fase
 my ($fase) = $ENV{'objetivo'};
-say "Fase $fase";
+metadatos( $fase );
 
 # Previa
 my $student_repo = Git->repository ( Directory => "." );
@@ -8404,7 +8404,7 @@ my @repo_files = $student_repo->command("ls-files");
 
 objetivo_0(@repo_files);
 
-exit if $fase > 0;
+exit if $fase <= 0;
 
 # Fase 2
 my ($readme_file) = grep( /^README/, @repo_files );
@@ -8422,6 +8422,13 @@ objetivo_1( $iv, \@repo_files );
 
 exit_action();
 
+# Mensajes diversos
+sub metadatos {
+  my $fase = shift;
+  doing( "Metadatos");
+  say "Fase $fase";
+  end_group();
+}
 
 # Objetivos
 sub objetivo_0 {
