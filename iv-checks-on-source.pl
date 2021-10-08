@@ -35,7 +35,7 @@ my $iv;
 
 eval { $iv = LoadFile("iv.yaml"); };
 if ($@) {
-  error( sorry( "Hay algún problema leyendo «iv.yaml» ⤷ $_" ) );
+  set_failed( sorry( "Hay algún problema leyendo «iv.yaml» ⤷ $@" ) );
 } else {
   say all_good( "Fichero de configuración ⚙ «iv.yaml» encontrado" );
 }
