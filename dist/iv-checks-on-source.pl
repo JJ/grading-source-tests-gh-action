@@ -8404,7 +8404,7 @@ my @repo_files = $student_repo->command("ls-files");
 
 objetivo_0(@repo_files);
 
-exit if $fase <= 0;
+exit if $fase <= 1;
 
 # Fase 2
 my ($readme_file) = grep( /^README/, @repo_files );
