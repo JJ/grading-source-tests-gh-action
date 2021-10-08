@@ -1,3 +1,5 @@
+all: fatpack
+
 installdeps:
 	cpanm --installdeps .
 
