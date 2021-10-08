@@ -2974,7 +2974,7 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   our %github;
   our $EXIT_CODE = 0;
   
-  our @EXPORT = qw( %github set_output set_env debug error warning set_failed command_on_file error_on_file warning_on_file start_group end_group);
+  our @EXPORT = qw( %github set_output set_env debug error warning set_failed command_on_file error_on_file warning_on_file start_group end_group exit_action);
   
   BEGIN {
     for my $k ( keys(%ENV) ) {
@@ -2985,7 +2985,7 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
     }
   }
   
-  use version; our $VERSION = qv('0.1.1');
+  use version; our $VERSION = qv('0.1.1.1');
   
   sub set_output {
     carp "Need name and value" unless @_;
