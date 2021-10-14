@@ -42,6 +42,10 @@ if ($@) {
 
 objetivo_1( $iv, \@repo_files );
 
+exit if $fase <= 3;
+
+objetivo_3( $iv, $README, \@repo_files );
+
 exit_action();
 
 # Mensajes diversos
@@ -82,6 +86,19 @@ sub objetivo_1 {
   end_group();
 }
 
+sub objetivo_3 {
+  doing( "🎯 Objetivo 3" );
+  my $iv = shift;
+  my $README = shift;
+  my $repo_files = shift;
+
+  comprueba( $iv->{'automatizar'}, "Clave «automatizar» presente", "Falta clave «automatizar»" );
+  comprueba( $iv->{'automatizar'}{'fichero'}, "Clave «automatizar→fichero» presente", "Falta clave «automatizar→fichero»" );
+  file_present( $iv->{'automatizar'}{'fichero'}, $repo_files, "Con el fichero de tareas" );
+  comprueba( $iv->{'automatizar'}{'orden'}, "Clave «automatizar→orden» presente", "Falta clave «automatizar→orden»" );
+  README_contiene( "$iv->{'automatizar'}{'orden'} check", $README );
+  end_group();
+}
 
 # Funciones de utilidad
 sub comprueba {
@@ -102,4 +119,13 @@ sub file_present {
                "Fichero $name → $file no está presente" );
   }
 
+}
+
+sub README_contiene {
+  my ($cadena, $README) = @_;
+  if ( index( $README, $cadena ) >= 0 ) {
+    say all_good( "El README contiene «$cadena»");
+  } else {
+    error (sorry( "El README no contiene «$cadena»" ));
+  }
 }
