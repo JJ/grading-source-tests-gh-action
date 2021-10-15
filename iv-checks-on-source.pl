@@ -76,8 +76,8 @@ sub objetivo_1 {
   my $iv = shift;
   for my $k (qw(lenguaje entidad)) {
     comprueba( $iv->{$k},
-               "🗝️ $k está presente",
-               "🗝️ $k no está presente"
+               "🗝️ $k está presente en «iv.yaml»",
+               "🗝️ $k no está presente en «iv.yaml»"
              );
   }
 
