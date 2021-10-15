@@ -14098,8 +14098,10 @@ sub objetivo_1 {
              );
   }
 
-  my $repo_files = shift;
-  file_present( $iv->{'entidad'}, $repo_files, "Con la entidad" );
+  if ($iv->{'entidad'}) {
+    my $repo_files = shift;
+    file_present( $iv->{'entidad'}, $repo_files, "Con la entidad" );
+  }
   end_group();
 }
 
