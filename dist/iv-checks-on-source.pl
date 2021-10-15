@@ -14111,10 +14111,10 @@ sub objetivo_3 {
   my $README = shift;
   my $repo_files = shift;
 
-  comprueba( $iv->{'automatizar'}, "Clave «automatizar» presente", "Falta clave «automatizar»" );
-  comprueba( $iv->{'automatizar'}{'fichero'}, "Clave «automatizar→fichero» presente", "Falta clave «automatizar→fichero»" );
+  comprueba( $iv->{'automatizar'}, "🗝️ «automatizar» presente", "Falta clave «automatizar»" );
+  comprueba( $iv->{'automatizar'}{'fichero'}, "🗝️  «automatizar→fichero» presente", "Falta clave «automatizar→fichero»" );
   file_present( $iv->{'automatizar'}{'fichero'}, $repo_files, "Con el fichero de tareas" );
-  comprueba( $iv->{'automatizar'}{'orden'}, "Clave «automatizar→orden» presente", "Falta clave «automatizar→orden»" );
+  comprueba( $iv->{'automatizar'}{'orden'}, "🗝️ «automatizar→orden» presente", "Falta clave «automatizar→orden»" );
   README_contiene( "$iv->{'automatizar'}{'orden'} check", $README );
   end_group();
 }
