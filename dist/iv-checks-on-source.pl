@@ -14043,7 +14043,7 @@ my @repo_files = $student_repo->command("ls-files");
 
 objetivo_0(@repo_files);
 
-exit if $fase <= 1;
+exit_action() if $fase <= 1;
 
 # Fase 2
 my ($readme_file) = grep( /^README/, @repo_files );
@@ -14059,7 +14059,7 @@ if ($@) {
 
 objetivo_1( $iv, \@repo_files );
 
-exit if $fase <= 3;
+exit_action() if $fase < 3;
 
 objetivo_3( $iv, $README, \@repo_files );
 
