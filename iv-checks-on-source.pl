@@ -97,7 +97,7 @@ sub objetivo_3 {
   comprueba( $iv->{'automatizar'}, "🗝️ «automatizar» presente", "Falta clave «automatizar»" );
   comprueba( ref $iv->{'automatizar'} eq "HASH",
              "🗝️ «automatizar» es un diccionario",
-             "La clave «automatizar» no contiene un diccionario, sino un" . ref $iv->{'automatizar'} );
+             "La clave «automatizar» no contiene un diccionario, sino un " . ref $iv->{'automatizar'} );
   comprueba( $iv->{'automatizar'}{'fichero'}, "🗝️  «automatizar→fichero» presente", "Falta clave «automatizar→fichero»" );
   file_present( $iv->{'automatizar'}{'fichero'}, $repo_files, "Con el fichero de tareas" );
   comprueba( $iv->{'automatizar'}{'orden'}, "🗝️ «automatizar→orden» presente", "Falta clave «automatizar→orden»" );
