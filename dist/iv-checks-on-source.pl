@@ -9150,7 +9150,6 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   }
   
   sub exit_action {
-    say "Código $EXIT_CODE";
     exit( $EXIT_CODE );
   }
   
@@ -14072,6 +14071,10 @@ exit_action() if $fase < 3;
 
 objetivo_3( $iv, $README, \@repo_files );
 
+exit_action() if $fase < 4;
+
+objetivo_4( $iv, $README, \@repo_files );
+
 exit_action();
 
 # Mensajes diversos
@@ -14131,6 +14134,18 @@ sub objetivo_3 {
   end_group();
 }
 
+sub objetivo_3 {
+  doing( "🎯 Objetivo 4" );
+  my $iv = shift;
+  my $README = shift;
+  my $repo_files = shift;
+
+  clave_presente( 'test' );
+  file_present( $iv->{'test'}, $repo_files, "Con un fichero de test" );
+  README_contiene( "$iv->{'automatizar'}{'orden'} test", $README );
+  end_group();
+}
+
 # Funciones de utilidad
 sub comprueba {
   my ( $expresion, $bien, $mal ) = @_;
@@ -14159,4 +14174,9 @@ sub README_contiene {
   } else {
     error (sorry( "El README no contiene «$cadena»" ));
   }
+}
+
+sub clave_presente {
+  my $clave = shift;
+  comprueba( $iv->{$clave}, "🗝️ «$clave» presente", "Falta clave «$clave»" );
 }
