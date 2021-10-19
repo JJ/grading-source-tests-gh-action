@@ -109,7 +109,7 @@ sub objetivo_3 {
   end_group();
 }
 
-sub objetivo_3 {
+sub objetivo_4 {
   doing( "🎯 Objetivo 4" );
   my $iv = shift;
   my $README = shift;
