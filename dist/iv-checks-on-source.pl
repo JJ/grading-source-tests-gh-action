@@ -1114,12 +1114,16 @@ ERROR_SIMPLE
 
 $fatpacked{"File/Slurper.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'FILE_SLURPER';
   package File::Slurper;
-  $File::Slurper::VERSION = '0.008';
+  $File::Slurper::VERSION = '0.009';
   use strict;
   use warnings;
   
   use Carp 'croak';
   use Exporter 5.57 'import';
+  
+  use Encode qw(:fallbacks);
+  use PerlIO::encoding;
+  
   our @EXPORT_OK = qw/read_binary read_text read_lines write_binary write_text read_dir/;
   
   sub read_binary {
@@ -1169,7 +1173,7 @@ $fatpacked{"File/Slurper.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'FI
   	my $layer = _text_layers($encoding, $crlf);
   	return read_binary($filename) if $layer eq ':raw';
   
-  	local $PerlIO::encoding::fallback = 1;
+  	local $PerlIO::encoding::fallback = FB_CROAK;
   	open my $fh, "<$layer", $filename or croak "Couldn't open $filename: $!";
   	return do { local $/; <$fh> };
   }
@@ -1179,7 +1183,7 @@ $fatpacked{"File/Slurper.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'FI
   	$encoding ||= 'utf-8';
   	my $layer = _text_layers($encoding, $crlf);
   
-  	local $PerlIO::encoding::fallback = 1;
+  	local $PerlIO::encoding::fallback = FB_CROAK;
   	open my $fh, ">$layer", $filename or croak "Couldn't open $filename: $!";
   	print $fh $_[1] or croak "Couldn't write to $filename: $!";
   	close $fh or croak "Couldn't write to $filename: $!";
@@ -1195,7 +1199,7 @@ $fatpacked{"File/Slurper.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'FI
   	$encoding ||= 'utf-8';
   	my $layer = _text_layers($encoding, $crlf);
   
-  	local $PerlIO::encoding::fallback = 1;
+  	local $PerlIO::encoding::fallback = FB_CROAK;
   	open my $fh, "<$layer", $filename or croak "Couldn't open $filename: $!";
   	return <$fh> if $skip_chomp;
   	my @buf = <$fh>;
@@ -1226,7 +1230,7 @@ $fatpacked{"File/Slurper.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'FI
   
   =head1 VERSION
   
-  version 0.008
+  version 0.009
   
   =head1 SYNOPSIS
   
@@ -1336,7 +1340,8 @@ $fatpacked{"Git.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT';
   our ($VERSION, @ISA, @EXPORT, @EXPORT_OK);
   
   # Totally unstable API.
-  $VERSION = '0.40';
+  $VERSION = '0.42';
+  # pulled from github, commit 217f2767cbcb562872437eed4dec62e00846d90c
   
   
   =head1 SYNOPSIS
@@ -1379,25 +1384,28 @@ $fatpacked{"Git.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT';
                   command_bidi_pipe command_close_bidi_pipe
                   version exec_path html_path hash_object git_cmd_try
                   remote_refs prompt
-                  get_tz_offset
+                  get_tz_offset get_record
                   credential credential_read credential_write
-                  temp_acquire temp_is_locked temp_release temp_reset temp_path);
+                  temp_acquire temp_is_locked temp_release temp_reset temp_path
+                  unquote_path);
   
   
   =head1 DESCRIPTION
   
-  This is the Git.pm from github's git/git, which is a mirror of the git source.
-  I (cpan msouth, or current maintainer) update the VERSION string here, and 
-  maintain this little bit of POD.  That's it.  The only reason you would
-  need this is if you are using something like Git::Hooks and you are using
-  a perlbrewed (or otherwise separate) perl from the one git is using on your
-  system (e.g. if you have a dev perl that's separate from system perl and git
-  uses the system perl.  Then the Git.pm gets installed in the system lib and you
-  have no way of getting it from CPAN, so your code that uses modules that 
-  depend on it doesn't work).  Except for this paragraph and the VERSION
-  string, this is just a copy of the latests version of perl/Git.pm from 
-  https://raw.github.com/git/git/master/perl/Git.pm .  Or, at least, it should
-  be--let me know if it's out of date and I hadn't noticed.)
+  [MAINTAINER NOTE: This is Git.pm, plus the other files in the perl/Git directory,
+  from github's git/git, which is a mirror of the git source.  I (cpan msouth, or
+  current maintainer) update the VERSION string (necessary on CPAN because of another
+  CPAN distribution that confused the CPAN toolchain about which was the actual
+  official Git.pm), add this explanatory paragraph, and use Dist::Zilla to package
+  and release on CPAN.  The only reason that I know of that you would need this is
+  if you are using something like Git::Hooks and you are using a perlbrewed (or
+  otherwise separate) perl from the one git is using on your system (e.g. if you
+  have a dev perl that’s separate from system perl, and git uses the system perl.
+  Then the Git.pm gets installed in the system lib and you have no way of getting
+  it from CPAN, so your code--that uses modules that depend on Git.pm--doesn’t work).
+  I try to keep this up to date, so that if you do pull this from CPAN it will be,
+  hopefully, identical in functionality to the Git.pm and Git/*.pm from the git
+  distribution.  If that is not the case, contact me and I'll look into it.]
   
   This module provides Perl scripts easy way to interface the Git version control
   system. The modules have an easy and well-tested way to call arbitrary Git
@@ -1521,7 +1529,8 @@ $fatpacked{"Git.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT';
   		};
   
   		if ($dir) {
-  			$dir =~ m#^/# or $dir = $opts{Directory} . '/' . $dir;
+  			_verify_require();
+  			File::Spec->file_name_is_absolute($dir) or $dir = $opts{Directory} . '/' . $dir;
   			$opts{Repository} = abs_path($dir);
   
   			# If --git-dir went ok, this shouldn't die either.
@@ -1725,7 +1734,7 @@ $fatpacked{"Git.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT';
   Execute the given C<COMMAND> in the same way as command_output_pipe()
   does but return both an input pipe filehandle and an output pipe filehandle.
   
-  The function will return return C<($pid, $pipe_in, $pipe_out, $ctx)>.
+  The function will return C<($pid, $pipe_in, $pipe_out, $ctx)>.
   See C<command_close_bidi_pipe()> for details.
   
   =cut
@@ -1863,13 +1872,27 @@ $fatpacked{"Git.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT';
   =cut
   
   sub get_tz_offset {
-  	# some systmes don't handle or mishandle %z, so be creative.
+  	# some systems don't handle or mishandle %z, so be creative.
   	my $t = shift || time;
   	my $gm = timegm(localtime($t));
   	my $sign = qw( + + - )[ $gm <=> $t ];
   	return sprintf("%s%02d%02d", $sign, (gmtime(abs($t - $gm)))[2,1]);
   }
   
+  =item get_record ( FILEHANDLE, INPUT_RECORD_SEPARATOR )
+  
+  Read one record from FILEHANDLE delimited by INPUT_RECORD_SEPARATOR,
+  removing any trailing INPUT_RECORD_SEPARATOR.
+  
+  =cut
+  
+  sub get_record {
+  	my ($fh, $rs) = @_;
+  	local $/ = $rs;
+  	my $rec = <$fh>;
+  	chomp $rec if defined $rs;
+  	$rec;
+  }
   
   =item prompt ( PROMPT , ISPASSWORD  )
   
@@ -2028,7 +2051,7 @@ $fatpacked{"Git.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT';
   is simple decimal number.  An optional value suffix of 'k', 'm',
   or 'g' in the config file will cause the value to be multiplied
   by 1024, 1048576 (1024^2), or 1073741824 (1024^3) prior to output.
-  It would return C<undef> if configuration variable is not defined,
+  It would return C<undef> if configuration variable is not defined.
   
   =cut
   
@@ -2037,7 +2060,7 @@ $fatpacked{"Git.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT';
   }
   
   # Common subroutine to implement bulk of what the config* family of methods
-  # do. This curently wraps command('config') so it is not so fast.
+  # do. This currently wraps command('config') so it is not so fast.
   sub _config_common {
   	my ($opts) = shift @_;
   	my ($self, $var) = _maybe_self(@_);
@@ -2197,6 +2220,76 @@ $fatpacked{"Git.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT';
   	return "$ident[0] <$ident[1]>";
   }
   
+  =item parse_mailboxes
+  
+  Return an array of mailboxes extracted from a string.
+  
+  =cut
+  
+  # Very close to Mail::Address's parser, but we still have minor
+  # differences in some cases (see t9000 for examples).
+  sub parse_mailboxes {
+  	my $re_comment = qr/\((?:[^)]*)\)/;
+  	my $re_quote = qr/"(?:[^\"\\]|\\.)*"/;
+  	my $re_word = qr/(?:[^]["\s()<>:;@\\,.]|\\.)+/;
+  
+  	# divide the string in tokens of the above form
+  	my $re_token = qr/(?:$re_quote|$re_word|$re_comment|\S)/;
+  	my @tokens = map { $_ =~ /\s*($re_token)\s*/g } @_;
+  	my $end_of_addr_seen = 0;
+  
+  	# add a delimiter to simplify treatment for the last mailbox
+  	push @tokens, ",";
+  
+  	my (@addr_list, @phrase, @address, @comment, @buffer) = ();
+  	foreach my $token (@tokens) {
+  		if ($token =~ /^[,;]$/) {
+  			# if buffer still contains undeterminated strings
+  			# append it at the end of @address or @phrase
+  			if ($end_of_addr_seen) {
+  				push @phrase, @buffer;
+  			} else {
+  				push @address, @buffer;
+  			}
+  
+  			my $str_phrase = join ' ', @phrase;
+  			my $str_address = join '', @address;
+  			my $str_comment = join ' ', @comment;
+  
+  			# quote are necessary if phrase contains
+  			# special characters
+  			if ($str_phrase =~ /[][()<>:;@\\,.\000-\037\177]/) {
+  				$str_phrase =~ s/(^|[^\\])"/$1/g;
+  				$str_phrase = qq["$str_phrase"];
+  			}
+  
+  			# add "<>" around the address if necessary
+  			if ($str_address ne "" && $str_phrase ne "") {
+  				$str_address = qq[<$str_address>];
+  			}
+  
+  			my $str_mailbox = "$str_phrase $str_address $str_comment";
+  			$str_mailbox =~ s/^\s*|\s*$//g;
+  			push @addr_list, $str_mailbox if ($str_mailbox);
+  
+  			@phrase = @address = @comment = @buffer = ();
+  			$end_of_addr_seen = 0;
+  		} elsif ($token =~ /^\(/) {
+  			push @comment, $token;
+  		} elsif ($token eq "<") {
+  			push @phrase, (splice @address), (splice @buffer);
+  		} elsif ($token eq ">") {
+  			$end_of_addr_seen = 1;
+  			push @address, (splice @buffer);
+  		} elsif ($token eq "@" && !$end_of_addr_seen) {
+  			push @address, (splice @buffer), "@";
+  		} else {
+  			push @buffer, $token;
+  		}
+  	}
+  
+  	return @addr_list;
+  }
   
   =item hash_object ( TYPE, FILENAME )
   
@@ -2627,8 +2720,11 @@ $fatpacked{"Git.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT';
   			$tmpdir = $self->repo_path();
   		}
   
+  		my $n = $name;
+  		$n =~ s/\W/_/g; # no strange chars
+  
   		($$temp_fd, $fname) = File::Temp::tempfile(
-  			'Git_XXXXXX', UNLINK => 1, DIR => $tmpdir,
+  			"Git_${n}_XXXXXX", UNLINK => 1, DIR => $tmpdir,
   			) or throw Error::Simple("couldn't open new temp file");
   
   		$$temp_fd->autoflush;
@@ -2682,6 +2778,95 @@ $fatpacked{"Git.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT';
   }
   
   } # %TEMP_* Lexical Context
+  
+  =item prefix_lines ( PREFIX, STRING [, STRING... ])
+  
+  Prefixes lines in C<STRING> with C<PREFIX>.
+  
+  =cut
+  
+  sub prefix_lines {
+  	my $prefix = shift;
+  	my $string = join("\n", @_);
+  	$string =~ s/^/$prefix/mg;
+  	return $string;
+  }
+  
+  =item unquote_path ( PATH )
+  
+  Unquote a quoted path containing c-escapes as returned by ls-files etc.
+  when not using -z or when parsing the output of diff -u.
+  
+  =cut
+  
+  {
+  	my %cquote_map = (
+  		"a" => chr(7),
+  		"b" => chr(8),
+  		"t" => chr(9),
+  		"n" => chr(10),
+  		"v" => chr(11),
+  		"f" => chr(12),
+  		"r" => chr(13),
+  		"\\" => "\\",
+  		"\042" => "\042",
+  	);
+  
+  	sub unquote_path {
+  		local ($_) = @_;
+  		my ($retval, $remainder);
+  		if (!/^\042(.*)\042$/) {
+  			return $_;
+  		}
+  		($_, $retval) = ($1, "");
+  		while (/^([^\\]*)\\(.*)$/) {
+  			$remainder = $2;
+  			$retval .= $1;
+  			for ($remainder) {
+  				if (/^([0-3][0-7][0-7])(.*)$/) {
+  					$retval .= chr(oct($1));
+  					$_ = $2;
+  					last;
+  				}
+  				if (/^([\\\042abtnvfr])(.*)$/) {
+  					$retval .= $cquote_map{$1};
+  					$_ = $2;
+  					last;
+  				}
+  				# This is malformed
+  				throw Error::Simple("invalid quoted path $_[0]");
+  			}
+  			$_ = $remainder;
+  		}
+  		$retval .= $_;
+  		return $retval;
+  	}
+  }
+  
+  =item get_comment_line_char ( )
+  
+  Gets the core.commentchar configuration value.
+  The value falls-back to '#' if core.commentchar is set to 'auto'.
+  
+  =cut
+  
+  sub get_comment_line_char {
+  	my $comment_line_char = config("core.commentchar") || '#';
+  	$comment_line_char = '#' if ($comment_line_char eq 'auto');
+  	$comment_line_char = '#' if (length($comment_line_char) != 1);
+  	return $comment_line_char;
+  }
+  
+  =item comment_lines ( STRING [, STRING... ])
+  
+  Comments lines following core.commentchar configuration.
+  
+  =cut
+  
+  sub comment_lines {
+  	my $comment_line_char = get_comment_line_char;
+  	return prefix_lines("$comment_line_char ", @_);
+  }
   
   =back
   
@@ -2960,6 +3145,5918 @@ $fatpacked{"Git.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT';
   1; # Famous last words
 GIT
 
+$fatpacked{"Git/I18N.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT_I18N';
+  package Git::I18N;
+  use 5.008;
+  use strict;
+  use warnings;
+  BEGIN {
+  	require Exporter;
+  	if ($] < 5.008003) {
+  		*import = \&Exporter::import;
+  	} else {
+  		# Exporter 5.57 which supports this invocation was
+  		# released with perl 5.8.3
+  		Exporter->import('import');
+  	}
+  }
+  
+  our @EXPORT = qw(__ __n N__);
+  our @EXPORT_OK = @EXPORT;
+  
+  sub __bootstrap_locale_messages {
+  	our $TEXTDOMAIN = 'git';
+  	our $TEXTDOMAINDIR = $ENV{GIT_TEXTDOMAINDIR} || '++LOCALEDIR++';
+  
+  	require POSIX;
+  	POSIX->import(qw(setlocale));
+  	# Non-core prerequisite module
+  	require Locale::Messages;
+  	Locale::Messages->import(qw(:locale_h :libintl_h));
+  
+  	setlocale(LC_MESSAGES(), '');
+  	setlocale(LC_CTYPE(), '');
+  	textdomain($TEXTDOMAIN);
+  	bindtextdomain($TEXTDOMAIN => $TEXTDOMAINDIR);
+  
+  	return;
+  }
+  
+  BEGIN
+  {
+  	# Used by our test script to see if it should test fallbacks or
+  	# not.
+  	our $__HAS_LIBRARY = 1;
+  
+  	local $@;
+  	eval {
+  		__bootstrap_locale_messages();
+  		*__ = \&Locale::Messages::gettext;
+  		*__n = \&Locale::Messages::ngettext;
+  		1;
+  	} or do {
+  		# Tell test.pl that we couldn't load the gettext library.
+  		$Git::I18N::__HAS_LIBRARY = 0;
+  
+  		# Just a fall-through no-op
+  		*__ = sub ($) { $_[0] };
+  		*__n = sub ($$$) { $_[2] == 1 ? $_[0] : $_[1] };
+  	};
+  
+  	sub N__($) { return shift; }
+  }
+  
+  1;
+  
+  __END__
+  
+  =head1 NAME
+  
+  Git::I18N - Perl interface to Git's Gettext localizations
+  
+  =head1 SYNOPSIS
+  
+  	use Git::I18N;
+  
+  	print __("Welcome to Git!\n");
+  
+  	printf __("The following error occurred: %s\n"), $error;
+  
+  	printf __n("committed %d file\n", "committed %d files\n", $files), $files;
+  
+  
+  =head1 DESCRIPTION
+  
+  Git's internal Perl interface to gettext via L<Locale::Messages>. If
+  L<Locale::Messages> can't be loaded (it's not a core module) we
+  provide stub passthrough fallbacks.
+  
+  This is a distilled interface to gettext, see C<info '(gettext)Perl'>
+  for the full interface. This module implements only a small part of
+  it.
+  
+  =head1 FUNCTIONS
+  
+  =head2 __($)
+  
+  L<Locale::Messages>'s gettext function if all goes well, otherwise our
+  passthrough fallback function.
+  
+  =head2 __n($$$)
+  
+  L<Locale::Messages>'s ngettext function or passthrough fallback function.
+  
+  =head2 N__($)
+  
+  No-operation that only returns its argument. Use this if you want xgettext to
+  extract the text to the pot template but do not want to trigger retrival of the
+  translation at run time.
+  
+  =head1 AUTHOR
+  
+  E<AElig>var ArnfjE<ouml>rE<eth> Bjarmason <avarab@gmail.com>
+  
+  =head1 COPYRIGHT
+  
+  Copyright 2010 E<AElig>var ArnfjE<ouml>rE<eth> Bjarmason <avarab@gmail.com>
+  
+  =cut
+GIT_I18N
+
+$fatpacked{"Git/IndexInfo.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT_INDEXINFO';
+  package Git::IndexInfo;
+  use strict;
+  use warnings;
+  use Git qw/command_input_pipe command_close_pipe/;
+  
+  sub new {
+  	my ($class) = @_;
+  	my ($gui, $ctx) = command_input_pipe(qw/update-index -z --index-info/);
+  	bless { gui => $gui, ctx => $ctx, nr => 0}, $class;
+  }
+  
+  sub remove {
+  	my ($self, $path) = @_;
+  	if (print { $self->{gui} } '0 ', 0 x 40, "\t", $path, "\0") {
+  		return ++$self->{nr};
+  	}
+  	undef;
+  }
+  
+  sub update {
+  	my ($self, $mode, $hash, $path) = @_;
+  	if (print { $self->{gui} } $mode, ' ', $hash, "\t", $path, "\0") {
+  		return ++$self->{nr};
+  	}
+  	undef;
+  }
+  
+  sub DESTROY {
+  	my ($self) = @_;
+  	command_close_pipe($self->{gui}, $self->{ctx});
+  }
+  
+  1;
+GIT_INDEXINFO
+
+$fatpacked{"Git/SVN.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT_SVN';
+  package Git::SVN;
+  use strict;
+  use warnings;
+  use Fcntl qw/:DEFAULT :seek/;
+  use constant rev_map_fmt => 'NH40';
+  use vars qw/$_no_metadata
+              $_repack $_repack_flags $_use_svm_props $_head
+              $_use_svnsync_props $no_reuse_existing
+  	    $_use_log_author $_add_author_from $_localtime/;
+  use Carp qw/croak/;
+  use File::Path qw/mkpath/;
+  use IPC::Open3;
+  use Memoize;  # core since 5.8.0, Jul 2002
+  use POSIX qw(:signal_h);
+  use Time::Local;
+  
+  use Git qw(
+      command
+      command_oneline
+      command_noisy
+      command_output_pipe
+      command_close_pipe
+      get_tz_offset
+  );
+  use Git::SVN::Utils qw(
+  	fatal
+  	can_compress
+  	join_paths
+  	canonicalize_path
+  	canonicalize_url
+  	add_path_to_url
+  );
+  
+  my $memo_backend;
+  our $_follow_parent  = 1;
+  our $_minimize_url   = 'unset';
+  our $default_repo_id = 'svn';
+  our $default_ref_id  = $ENV{GIT_SVN_ID} || 'git-svn';
+  
+  my ($_gc_nr, $_gc_period);
+  
+  # properties that we do not log:
+  my %SKIP_PROP;
+  BEGIN {
+  	%SKIP_PROP = map { $_ => 1 } qw/svn:wc:ra_dav:version-url
+  	                                svn:special svn:executable
+  	                                svn:entry:committed-rev
+  	                                svn:entry:last-author
+  	                                svn:entry:uuid
+  	                                svn:entry:committed-date/;
+  
+  	# some options are read globally, but can be overridden locally
+  	# per [svn-remote "..."] section.  Command-line options will *NOT*
+  	# override options set in an [svn-remote "..."] section
+  	no strict 'refs';
+  	for my $option (qw/follow_parent no_metadata use_svm_props
+  			   use_svnsync_props/) {
+  		my $key = $option;
+  		$key =~ tr/_//d;
+  		my $prop = "-$option";
+  		*$option = sub {
+  			my ($self) = @_;
+  			return $self->{$prop} if exists $self->{$prop};
+  			my $k = "svn-remote.$self->{repo_id}.$key";
+  			eval { command_oneline(qw/config --get/, $k) };
+  			if ($@) {
+  				$self->{$prop} = ${"Git::SVN::_$option"};
+  			} else {
+  				my $v = command_oneline(qw/config --bool/,$k);
+  				$self->{$prop} = $v eq 'false' ? 0 : 1;
+  			}
+  			return $self->{$prop};
+  		}
+  	}
+  }
+  
+  
+  my (%LOCKFILES, %INDEX_FILES);
+  END {
+  	unlink keys %LOCKFILES if %LOCKFILES;
+  	unlink keys %INDEX_FILES if %INDEX_FILES;
+  }
+  
+  sub resolve_local_globs {
+  	my ($url, $fetch, $glob_spec) = @_;
+  	return unless defined $glob_spec;
+  	my $ref = $glob_spec->{ref};
+  	my $path = $glob_spec->{path};
+  	foreach (command(qw#for-each-ref --format=%(refname) refs/#)) {
+  		next unless m#^$ref->{regex}$#;
+  		my $p = $1;
+  		my $pathname = desanitize_refname($path->full_path($p));
+  		my $refname = desanitize_refname($ref->full_path($p));
+  		if (my $existing = $fetch->{$pathname}) {
+  			if ($existing ne $refname) {
+  				die "Refspec conflict:\n",
+  				    "existing: $existing\n",
+  				    " globbed: $refname\n";
+  			}
+  			my $u = (::cmt_metadata("$refname"))[0];
+  			if (!defined($u)) {
+  				warn
+  "W: $refname: no associated commit metadata from SVN, skipping\n";
+  				next;
+  			}
+  			$u =~ s!^\Q$url\E(/|$)!! or die
+  			  "$refname: '$url' not found in '$u'\n";
+  			if ($pathname ne $u) {
+  				warn "W: Refspec glob conflict ",
+  				     "(ref: $refname):\n",
+  				     "expected path: $pathname\n",
+  				     "    real path: $u\n",
+  				     "Continuing ahead with $u\n";
+  				next;
+  			}
+  		} else {
+  			$fetch->{$pathname} = $refname;
+  		}
+  	}
+  }
+  
+  sub parse_revision_argument {
+  	my ($base, $head) = @_;
+  	if (!defined $::_revision || $::_revision eq 'BASE:HEAD') {
+  		return ($base, $head);
+  	}
+  	return ($1, $2) if ($::_revision =~ /^(\d+):(\d+)$/);
+  	return ($::_revision, $::_revision) if ($::_revision =~ /^\d+$/);
+  	return ($head, $head) if ($::_revision eq 'HEAD');
+  	return ($base, $1) if ($::_revision =~ /^BASE:(\d+)$/);
+  	return ($1, $head) if ($::_revision =~ /^(\d+):HEAD$/);
+  	die "revision argument: $::_revision not understood by git-svn\n";
+  }
+  
+  sub fetch_all {
+  	my ($repo_id, $remotes) = @_;
+  	if (ref $repo_id) {
+  		my $gs = $repo_id;
+  		$repo_id = undef;
+  		$repo_id = $gs->{repo_id};
+  	}
+  	$remotes ||= read_all_remotes();
+  	my $remote = $remotes->{$repo_id} or
+  	             die "[svn-remote \"$repo_id\"] unknown\n";
+  	my $fetch = $remote->{fetch};
+  	my $url = $remote->{url} or die "svn-remote.$repo_id.url not defined\n";
+  	my (@gs, @globs);
+  	my $ra = Git::SVN::Ra->new($url);
+  	my $uuid = $ra->get_uuid;
+  	my $head = $ra->get_latest_revnum;
+  
+  	# ignore errors, $head revision may not even exist anymore
+  	eval { $ra->get_log("", $head, 0, 1, 0, 1, sub { $head = $_[1] }) };
+  	warn "W: $@\n" if $@;
+  
+  	my $base = defined $fetch ? $head : 0;
+  
+  	# read the max revs for wildcard expansion (branches/*, tags/*)
+  	foreach my $t (qw/branches tags/) {
+  		defined $remote->{$t} or next;
+  		push @globs, @{$remote->{$t}};
+  
+  		my $max_rev = eval { tmp_config(qw/--int --get/,
+  		                         "svn-remote.$repo_id.${t}-maxRev") };
+  		if (defined $max_rev && ($max_rev < $base)) {
+  			$base = $max_rev;
+  		} elsif (!defined $max_rev) {
+  			$base = 0;
+  		}
+  	}
+  
+  	if ($fetch) {
+  		foreach my $p (sort keys %$fetch) {
+  			my $gs = Git::SVN->new($fetch->{$p}, $repo_id, $p);
+  			my $lr = $gs->rev_map_max;
+  			if (defined $lr) {
+  				$base = $lr if ($lr < $base);
+  			}
+  			push @gs, $gs;
+  		}
+  	}
+  
+  	($base, $head) = parse_revision_argument($base, $head);
+  	$ra->gs_fetch_loop_common($base, $head, \@gs, \@globs);
+  }
+  
+  sub read_all_remotes {
+  	my $r = {};
+  	my $use_svm_props = eval { command_oneline(qw/config --bool
+  	    svn.useSvmProps/) };
+  	$use_svm_props = $use_svm_props eq 'true' if $use_svm_props;
+  	my $svn_refspec = qr{\s*(.*?)\s*:\s*(.+?)\s*};
+  	foreach (grep { s/^svn-remote\.// } command(qw/config -l/)) {
+  		if (m!^(.+)\.fetch=$svn_refspec$!) {
+  			my ($remote, $local_ref, $remote_ref) = ($1, $2, $3);
+  			die("svn-remote.$remote: remote ref '$remote_ref' "
+  			    . "must start with 'refs/'\n")
+  				unless $remote_ref =~ m{^refs/};
+  			$local_ref = uri_decode($local_ref);
+  			$r->{$remote}->{fetch}->{$local_ref} = $remote_ref;
+  			$r->{$remote}->{svm} = {} if $use_svm_props;
+  		} elsif (m!^(.+)\.usesvmprops=\s*(.*)\s*$!) {
+  			$r->{$1}->{svm} = {};
+  		} elsif (m!^(.+)\.url=\s*(.*)\s*$!) {
+  			$r->{$1}->{url} = canonicalize_url($2);
+  		} elsif (m!^(.+)\.pushurl=\s*(.*)\s*$!) {
+  			$r->{$1}->{pushurl} = canonicalize_url($2);
+  		} elsif (m!^(.+)\.ignore-refs=\s*(.*)\s*$!) {
+  			$r->{$1}->{ignore_refs_regex} = $2;
+  		} elsif (m!^(.+)\.(branches|tags)=$svn_refspec$!) {
+  			my ($remote, $t, $local_ref, $remote_ref) =
+  			                                     ($1, $2, $3, $4);
+  			die("svn-remote.$remote: remote ref '$remote_ref' ($t) "
+  			    . "must start with 'refs/'\n")
+  				unless $remote_ref =~ m{^refs/};
+  			$local_ref = uri_decode($local_ref);
+  
+  			require Git::SVN::GlobSpec;
+  			my $rs = {
+  			    t => $t,
+  			    remote => $remote,
+  			    path => Git::SVN::GlobSpec->new($local_ref, 1),
+  			    ref => Git::SVN::GlobSpec->new($remote_ref, 0) };
+  			if (length($rs->{ref}->{right}) != 0) {
+  				die "The '*' glob character must be the last ",
+  				    "character of '$remote_ref'\n";
+  			}
+  			push @{ $r->{$remote}->{$t} }, $rs;
+  		}
+  	}
+  
+  	map {
+  		if (defined $r->{$_}->{svm}) {
+  			my $svm;
+  			eval {
+  				my $section = "svn-remote.$_";
+  				$svm = {
+  					source => tmp_config('--get',
+  					    "$section.svm-source"),
+  					replace => tmp_config('--get',
+  					    "$section.svm-replace"),
+  				}
+  			};
+  			$r->{$_}->{svm} = $svm;
+  		}
+  	} keys %$r;
+  
+  	foreach my $remote (keys %$r) {
+  		foreach ( grep { defined $_ }
+  			  map { $r->{$remote}->{$_} } qw(branches tags) ) {
+  			foreach my $rs ( @$_ ) {
+  				$rs->{ignore_refs_regex} =
+  				    $r->{$remote}->{ignore_refs_regex};
+  			}
+  		}
+  	}
+  
+  	$r;
+  }
+  
+  sub init_vars {
+  	$_gc_nr = $_gc_period = 1000;
+  	if (defined $_repack || defined $_repack_flags) {
+  	       warn "Repack options are obsolete; they have no effect.\n";
+  	}
+  }
+  
+  sub verify_remotes_sanity {
+  	return unless -d $ENV{GIT_DIR};
+  	my %seen;
+  	foreach (command(qw/config -l/)) {
+  		if (m!^svn-remote\.(?:.+)\.fetch=.*:refs/remotes/(\S+)\s*$!) {
+  			if ($seen{$1}) {
+  				die "Remote ref refs/remote/$1 is tracked by",
+  				    "\n  \"$_\"\nand\n  \"$seen{$1}\"\n",
+  				    "Please resolve this ambiguity in ",
+  				    "your git configuration file before ",
+  				    "continuing\n";
+  			}
+  			$seen{$1} = $_;
+  		}
+  	}
+  }
+  
+  sub find_existing_remote {
+  	my ($url, $remotes) = @_;
+  	return undef if $no_reuse_existing;
+  	my $existing;
+  	foreach my $repo_id (keys %$remotes) {
+  		my $u = $remotes->{$repo_id}->{url} or next;
+  		next if $u ne $url;
+  		$existing = $repo_id;
+  		last;
+  	}
+  	$existing;
+  }
+  
+  sub init_remote_config {
+  	my ($self, $url, $no_write) = @_;
+  	$url = canonicalize_url($url);
+  	my $r = read_all_remotes();
+  	my $existing = find_existing_remote($url, $r);
+  	if ($existing) {
+  		unless ($no_write) {
+  			print STDERR "Using existing ",
+  				     "[svn-remote \"$existing\"]\n";
+  		}
+  		$self->{repo_id} = $existing;
+  	} elsif ($_minimize_url) {
+  		my $min_url = Git::SVN::Ra->new($url)->minimize_url;
+  		$existing = find_existing_remote($min_url, $r);
+  		if ($existing) {
+  			unless ($no_write) {
+  				print STDERR "Using existing ",
+  					     "[svn-remote \"$existing\"]\n";
+  			}
+  			$self->{repo_id} = $existing;
+  		}
+  		if ($min_url ne $url) {
+  			unless ($no_write) {
+  				print STDERR "Using higher level of URL: ",
+  					     "$url => $min_url\n";
+  			}
+  			my $old_path = $self->path;
+  			$url =~ s!^\Q$min_url\E(/|$)!!;
+  			$url = join_paths($url, $old_path);
+  			$self->path($url);
+  			$url = $min_url;
+  		}
+  	}
+  	my $orig_url;
+  	if (!$existing) {
+  		# verify that we aren't overwriting anything:
+  		$orig_url = eval {
+  			command_oneline('config', '--get',
+  					"svn-remote.$self->{repo_id}.url")
+  		};
+  		if ($orig_url && ($orig_url ne $url)) {
+  			die "svn-remote.$self->{repo_id}.url already set: ",
+  			    "$orig_url\nwanted to set to: $url\n";
+  		}
+  	}
+  	my ($xrepo_id, $xpath) = find_ref($self->refname);
+  	if (!$no_write && defined $xpath) {
+  		die "svn-remote.$xrepo_id.fetch already set to track ",
+  		    "$xpath:", $self->refname, "\n";
+  	}
+  	unless ($no_write) {
+  		command_noisy('config',
+  			      "svn-remote.$self->{repo_id}.url", $url);
+  		my $path = $self->path;
+  		$path =~ s{^/}{};
+  		$path =~ s{%([0-9A-F]{2})}{chr hex($1)}ieg;
+  		$self->path($path);
+  		command_noisy('config', '--add',
+  			      "svn-remote.$self->{repo_id}.fetch",
+  			      $self->path.":".$self->refname);
+  	}
+  	$self->url($url);
+  }
+  
+  sub find_by_url { # repos_root and, path are optional
+  	my ($class, $full_url, $repos_root, $path) = @_;
+  
+  	$full_url = canonicalize_url($full_url);
+  
+  	return undef unless defined $full_url;
+  	remove_username($full_url);
+  	remove_username($repos_root) if defined $repos_root;
+  	my $remotes = read_all_remotes();
+  	if (defined $full_url && defined $repos_root && !defined $path) {
+  		$path = $full_url;
+  		$path =~ s#^\Q$repos_root\E(?:/|$)##;
+  	}
+  	foreach my $repo_id (keys %$remotes) {
+  		my $u = $remotes->{$repo_id}->{url} or next;
+  		remove_username($u);
+  		next if defined $repos_root && $repos_root ne $u;
+  
+  		my $fetch = $remotes->{$repo_id}->{fetch} || {};
+  		foreach my $t (qw/branches tags/) {
+  			foreach my $globspec (@{$remotes->{$repo_id}->{$t}}) {
+  				resolve_local_globs($u, $fetch, $globspec);
+  			}
+  		}
+  		my $p = $path;
+  		my $rwr = rewrite_root({repo_id => $repo_id});
+  		my $svm = $remotes->{$repo_id}->{svm}
+  			if defined $remotes->{$repo_id}->{svm};
+  		unless (defined $p) {
+  			$p = $full_url;
+  			my $z = $u;
+  			my $prefix = '';
+  			if ($rwr) {
+  				$z = $rwr;
+  				remove_username($z);
+  			} elsif (defined $svm) {
+  				$z = $svm->{source};
+  				$prefix = $svm->{replace};
+  				$prefix =~ s#^\Q$u\E(?:/|$)##;
+  				$prefix =~ s#/$##;
+  			}
+  			$p =~ s#^\Q$z\E(?:/|$)#$prefix# or next;
+  		}
+  
+  		# remote fetch paths are not URI escaped.  Decode ours
+  		# so they match
+  		$p = uri_decode($p);
+  
+  		foreach my $f (keys %$fetch) {
+  			next if $f ne $p;
+  			return Git::SVN->new($fetch->{$f}, $repo_id, $f);
+  		}
+  	}
+  	undef;
+  }
+  
+  sub init {
+  	my ($class, $url, $path, $repo_id, $ref_id, $no_write) = @_;
+  	my $self = _new($class, $repo_id, $ref_id, $path);
+  	if (defined $url) {
+  		$self->init_remote_config($url, $no_write);
+  	}
+  	$self;
+  }
+  
+  sub find_ref {
+  	my ($ref_id) = @_;
+  	foreach (command(qw/config -l/)) {
+  		next unless m!^svn-remote\.(.+)\.fetch=
+  		              \s*(.*?)\s*:\s*(.+?)\s*$!x;
+  		my ($repo_id, $path, $ref) = ($1, $2, $3);
+  		if ($ref eq $ref_id) {
+  			$path = '' if ($path =~ m#^\./?#);
+  			return ($repo_id, $path);
+  		}
+  	}
+  	(undef, undef, undef);
+  }
+  
+  sub new {
+  	my ($class, $ref_id, $repo_id, $path) = @_;
+  	if (defined $ref_id && !defined $repo_id && !defined $path) {
+  		($repo_id, $path) = find_ref($ref_id);
+  		if (!defined $repo_id) {
+  			die "Could not find a \"svn-remote.*.fetch\" key ",
+  			    "in the repository configuration matching: ",
+  			    "$ref_id\n";
+  		}
+  	}
+  	my $self = _new($class, $repo_id, $ref_id, $path);
+  	if (!defined $self->path || !length $self->path) {
+  		my $fetch = command_oneline('config', '--get',
+  		                            "svn-remote.$repo_id.fetch",
+  		                            ":$ref_id\$") or
+  		     die "Failed to read \"svn-remote.$repo_id.fetch\" ",
+  		         "\":$ref_id\$\" in config\n";
+  		my($path) = split(/\s*:\s*/, $fetch);
+  		$self->path($path);
+  	}
+  	{
+  		my $path = $self->path;
+  		$path =~ s{\A/}{};
+  		$path =~ s{/\z}{};
+  		$self->path($path);
+  	}
+  	my $url = command_oneline('config', '--get',
+  	                          "svn-remote.$repo_id.url") or
+                    die "Failed to read \"svn-remote.$repo_id.url\" in config\n";
+  	$self->url($url);
+  	$self->{pushurl} = eval { command_oneline('config', '--get',
+  	                          "svn-remote.$repo_id.pushurl") };
+  	$self->rebuild;
+  	$self;
+  }
+  
+  sub refname {
+  	my ($refname) = $_[0]->{ref_id} ;
+  
+  	# It cannot end with a slash /, we'll throw up on this because
+  	# SVN can't have directories with a slash in their name, either:
+  	if ($refname =~ m{/$}) {
+  		die "ref: '$refname' ends with a trailing slash; this is ",
+  		    "not permitted by git or Subversion\n";
+  	}
+  
+  	# It cannot have ASCII control character space, tilde ~, caret ^,
+  	# colon :, question-mark ?, asterisk *, space, or open bracket [
+  	# anywhere.
+  	#
+  	# Additionally, % must be escaped because it is used for escaping
+  	# and we want our escaped refname to be reversible
+  	$refname =~ s{([ \%~\^:\?\*\[\t\\])}{sprintf('%%%02X',ord($1))}eg;
+  
+  	# no slash-separated component can begin with a dot .
+  	# /.* becomes /%2E*
+  	$refname =~ s{/\.}{/%2E}g;
+  
+  	# It cannot have two consecutive dots .. anywhere
+  	# .. becomes %2E%2E
+  	$refname =~ s{\.\.}{%2E%2E}g;
+  
+  	# trailing dots and .lock are not allowed
+  	# .$ becomes %2E and .lock becomes %2Elock
+  	$refname =~ s{\.(?=$|lock$)}{%2E};
+  
+  	# the sequence @{ is used to access the reflog
+  	# @{ becomes %40{
+  	$refname =~ s{\@\{}{%40\{}g;
+  
+  	return $refname;
+  }
+  
+  sub desanitize_refname {
+  	my ($refname) = @_;
+  	$refname =~ s{%(?:([0-9A-F]{2}))}{chr hex($1)}eg;
+  	return $refname;
+  }
+  
+  sub svm_uuid {
+  	my ($self) = @_;
+  	return $self->{svm}->{uuid} if $self->svm;
+  	$self->ra;
+  	unless ($self->{svm}) {
+  		die "SVM UUID not cached, and reading remotely failed\n";
+  	}
+  	$self->{svm}->{uuid};
+  }
+  
+  sub svm {
+  	my ($self) = @_;
+  	return $self->{svm} if $self->{svm};
+  	my $svm;
+  	# see if we have it in our config, first:
+  	eval {
+  		my $section = "svn-remote.$self->{repo_id}";
+  		$svm = {
+  		  source => tmp_config('--get', "$section.svm-source"),
+  		  uuid => tmp_config('--get', "$section.svm-uuid"),
+  		  replace => tmp_config('--get', "$section.svm-replace"),
+  		}
+  	};
+  	if ($svm && $svm->{source} && $svm->{uuid} && $svm->{replace}) {
+  		$self->{svm} = $svm;
+  	}
+  	$self->{svm};
+  }
+  
+  sub _set_svm_vars {
+  	my ($self, $ra) = @_;
+  	return $ra if $self->svm;
+  
+  	my @err = ( "useSvmProps set, but failed to read SVM properties\n",
+  		    "(svm:source, svm:uuid) ",
+  		    "from the following URLs:\n" );
+  	sub read_svm_props {
+  		my ($self, $ra, $path, $r) = @_;
+  		my $props = ($ra->get_dir($path, $r))[2];
+  		my $src = $props->{'svm:source'};
+  		my $uuid = $props->{'svm:uuid'};
+  		return undef if (!$src || !$uuid);
+  
+  		chomp($src, $uuid);
+  
+  		$uuid =~ m{^[0-9a-f\-]{30,}$}i
+  		    or die "doesn't look right - svm:uuid is '$uuid'\n";
+  
+  		# the '!' is used to mark the repos_root!/relative/path
+  		$src =~ s{/?!/?}{/};
+  		$src =~ s{/+$}{}; # no trailing slashes please
+  		# username is of no interest
+  		$src =~ s{(^[a-z\+]*://)[^/@]*@}{$1};
+  
+  		my $replace = add_path_to_url($ra->url, $path);
+  
+  		my $section = "svn-remote.$self->{repo_id}";
+  		tmp_config("$section.svm-source", $src);
+  		tmp_config("$section.svm-replace", $replace);
+  		tmp_config("$section.svm-uuid", $uuid);
+  		$self->{svm} = {
+  			source => $src,
+  			uuid => $uuid,
+  			replace => $replace
+  		};
+  	}
+  
+  	my $r = $ra->get_latest_revnum;
+  	my $path = $self->path;
+  	my %tried;
+  	while (length $path) {
+  		my $try = add_path_to_url($self->url, $path);
+  		unless ($tried{$try}) {
+  			return $ra if $self->read_svm_props($ra, $path, $r);
+  			$tried{$try} = 1;
+  		}
+  		$path =~ s#/?[^/]+$##;
+  	}
+  	die "Path: '$path' should be ''\n" if $path ne '';
+  	return $ra if $self->read_svm_props($ra, $path, $r);
+  	$tried{ add_path_to_url($self->url, $path) } = 1;
+  
+  	if ($ra->{repos_root} eq $self->url) {
+  		die @err, (map { "  $_\n" } keys %tried), "\n";
+  	}
+  
+  	# nope, make sure we're connected to the repository root:
+  	my $ok;
+  	my @tried_b;
+  	$path = $ra->{svn_path};
+  	$ra = Git::SVN::Ra->new($ra->{repos_root});
+  	while (length $path) {
+  		my $try = add_path_to_url($ra->url, $path);
+  		unless ($tried{$try}) {
+  			$ok = $self->read_svm_props($ra, $path, $r);
+  			last if $ok;
+  			$tried{$try} = 1;
+  		}
+  		$path =~ s#/?[^/]+$##;
+  	}
+  	die "Path: '$path' should be ''\n" if $path ne '';
+  	$ok ||= $self->read_svm_props($ra, $path, $r);
+  	$tried{ add_path_to_url($ra->url, $path) } = 1;
+  	if (!$ok) {
+  		die @err, (map { "  $_\n" } keys %tried), "\n";
+  	}
+  	Git::SVN::Ra->new($self->url);
+  }
+  
+  sub svnsync {
+  	my ($self) = @_;
+  	return $self->{svnsync} if $self->{svnsync};
+  
+  	if ($self->no_metadata) {
+  		die "Can't have both 'noMetadata' and ",
+  		    "'useSvnsyncProps' options set!\n";
+  	}
+  	if ($self->rewrite_root) {
+  		die "Can't have both 'useSvnsyncProps' and 'rewriteRoot' ",
+  		    "options set!\n";
+  	}
+  	if ($self->rewrite_uuid) {
+  		die "Can't have both 'useSvnsyncProps' and 'rewriteUUID' ",
+  		    "options set!\n";
+  	}
+  
+  	my $svnsync;
+  	# see if we have it in our config, first:
+  	eval {
+  		my $section = "svn-remote.$self->{repo_id}";
+  
+  		my $url = tmp_config('--get', "$section.svnsync-url");
+  		($url) = ($url =~ m{^([a-z\+]+://\S+)$}) or
+  		   die "doesn't look right - svn:sync-from-url is '$url'\n";
+  
+  		my $uuid = tmp_config('--get', "$section.svnsync-uuid");
+  		($uuid) = ($uuid =~ m{^([0-9a-f\-]{30,})$}i) or
+  		   die "doesn't look right - svn:sync-from-uuid is '$uuid'\n";
+  
+  		$svnsync = { url => $url, uuid => $uuid }
+  	};
+  	if ($svnsync && $svnsync->{url} && $svnsync->{uuid}) {
+  		return $self->{svnsync} = $svnsync;
+  	}
+  
+  	my $err = "useSvnsyncProps set, but failed to read " .
+  	          "svnsync property: svn:sync-from-";
+  	my $rp = $self->ra->rev_proplist(0);
+  
+  	my $url = $rp->{'svn:sync-from-url'} or die $err . "url\n";
+  	($url) = ($url =~ m{^([a-z\+]+://\S+)$}) or
+  	           die "doesn't look right - svn:sync-from-url is '$url'\n";
+  
+  	my $uuid = $rp->{'svn:sync-from-uuid'} or die $err . "uuid\n";
+  	($uuid) = ($uuid =~ m{^([0-9a-f\-]{30,})$}i) or
+  	           die "doesn't look right - svn:sync-from-uuid is '$uuid'\n";
+  
+  	my $section = "svn-remote.$self->{repo_id}";
+  	tmp_config('--add', "$section.svnsync-uuid", $uuid);
+  	tmp_config('--add', "$section.svnsync-url", $url);
+  	return $self->{svnsync} = { url => $url, uuid => $uuid };
+  }
+  
+  # this allows us to memoize our SVN::Ra UUID locally and avoid a
+  # remote lookup (useful for 'git svn log').
+  sub ra_uuid {
+  	my ($self) = @_;
+  	unless ($self->{ra_uuid}) {
+  		my $key = "svn-remote.$self->{repo_id}.uuid";
+  		my $uuid = eval { tmp_config('--get', $key) };
+  		if (!$@ && $uuid && $uuid =~ /^([a-f\d\-]{30,})$/i) {
+  			$self->{ra_uuid} = $uuid;
+  		} else {
+  			die "ra_uuid called without URL\n" unless $self->url;
+  			$self->{ra_uuid} = $self->ra->get_uuid;
+  			tmp_config('--add', $key, $self->{ra_uuid});
+  		}
+  	}
+  	$self->{ra_uuid};
+  }
+  
+  sub _set_repos_root {
+  	my ($self, $repos_root) = @_;
+  	my $k = "svn-remote.$self->{repo_id}.reposRoot";
+  	$repos_root ||= $self->ra->{repos_root};
+  	tmp_config($k, $repos_root);
+  	$repos_root;
+  }
+  
+  sub repos_root {
+  	my ($self) = @_;
+  	my $k = "svn-remote.$self->{repo_id}.reposRoot";
+  	eval { tmp_config('--get', $k) } || $self->_set_repos_root;
+  }
+  
+  sub ra {
+  	my ($self) = shift;
+  	my $ra = Git::SVN::Ra->new($self->url);
+  	$self->_set_repos_root($ra->{repos_root});
+  	if ($self->use_svm_props && !$self->{svm}) {
+  		if ($self->no_metadata) {
+  			die "Can't have both 'noMetadata' and ",
+  			    "'useSvmProps' options set!\n";
+  		} elsif ($self->use_svnsync_props) {
+  			die "Can't have both 'useSvnsyncProps' and ",
+  			    "'useSvmProps' options set!\n";
+  		}
+  		$ra = $self->_set_svm_vars($ra);
+  		$self->{-want_revprops} = 1;
+  	}
+  	$ra;
+  }
+  
+  # prop_walk(PATH, REV, SUB)
+  # -------------------------
+  # Recursively traverse PATH at revision REV and invoke SUB for each
+  # directory that contains a SVN property.  SUB will be invoked as
+  # follows:  &SUB(gs, path, props);  where `gs' is this instance of
+  # Git::SVN, `path' the path to the directory where the properties
+  # `props' were found.  The `path' will be relative to point of checkout,
+  # that is, if url://repo/trunk is the current Git branch, and that
+  # directory contains a sub-directory `d', SUB will be invoked with `/d/'
+  # as `path' (note the trailing `/').
+  sub prop_walk {
+  	my ($self, $path, $rev, $sub) = @_;
+  
+  	$path =~ s#^/##;
+  	my ($dirent, undef, $props) = $self->ra->get_dir($path, $rev);
+  	$path =~ s#^/*#/#g;
+  	my $p = $path;
+  	# Strip the irrelevant part of the path.
+  	$p =~ s#^/+\Q@{[$self->path]}\E(/|$)#/#;
+  	# Ensure the path is terminated by a `/'.
+  	$p =~ s#/*$#/#;
+  
+  	# The properties contain all the internal SVN stuff nobody
+  	# (usually) cares about.
+  	my $interesting_props = 0;
+  	foreach (keys %{$props}) {
+  		# If it doesn't start with `svn:', it must be a
+  		# user-defined property.
+  		++$interesting_props and next if $_ !~ /^svn:/;
+  		# FIXME: Fragile, if SVN adds new public properties,
+  		# this needs to be updated.
+  		++$interesting_props if /^svn:(?:ignore|keywords|executable
+  		                                 |eol-style|mime-type
+  						 |externals|needs-lock)$/x;
+  	}
+  	&$sub($self, $p, $props) if $interesting_props;
+  
+  	foreach (sort keys %$dirent) {
+  		next if $dirent->{$_}->{kind} != $SVN::Node::dir;
+  		$self->prop_walk($self->path . $p . $_, $rev, $sub);
+  	}
+  }
+  
+  sub last_rev { ($_[0]->last_rev_commit)[0] }
+  sub last_commit { ($_[0]->last_rev_commit)[1] }
+  
+  # returns the newest SVN revision number and newest commit SHA1
+  sub last_rev_commit {
+  	my ($self) = @_;
+  	if (defined $self->{last_rev} && defined $self->{last_commit}) {
+  		return ($self->{last_rev}, $self->{last_commit});
+  	}
+  	my $c = ::verify_ref($self->refname.'^0');
+  	if ($c && !$self->use_svm_props && !$self->no_metadata) {
+  		my $rev = (::cmt_metadata($c))[1];
+  		if (defined $rev) {
+  			($self->{last_rev}, $self->{last_commit}) = ($rev, $c);
+  			return ($rev, $c);
+  		}
+  	}
+  	my $map_path = $self->map_path;
+  	unless (-e $map_path) {
+  		($self->{last_rev}, $self->{last_commit}) = (undef, undef);
+  		return (undef, undef);
+  	}
+  	my ($rev, $commit) = $self->rev_map_max(1);
+  	($self->{last_rev}, $self->{last_commit}) = ($rev, $commit);
+  	return ($rev, $commit);
+  }
+  
+  sub get_fetch_range {
+  	my ($self, $min, $max) = @_;
+  	$max ||= $self->ra->get_latest_revnum;
+  	$min ||= $self->rev_map_max;
+  	(++$min, $max);
+  }
+  
+  sub svn_dir {
+  	command_oneline(qw(rev-parse --git-path svn));
+  }
+  
+  sub tmp_config {
+  	my (@args) = @_;
+  	my $svn_dir = svn_dir();
+  	my $old_def_config = "$svn_dir/config";
+  	my $config = "$svn_dir/.metadata";
+  	if (! -f $config && -f $old_def_config) {
+  		rename $old_def_config, $config or
+  		       die "Failed rename $old_def_config => $config: $!\n";
+  	}
+  	my $old_config = $ENV{GIT_CONFIG};
+  	$ENV{GIT_CONFIG} = $config;
+  	$@ = undef;
+  	my @ret = eval {
+  		unless (-f $config) {
+  			mkfile($config);
+  			open my $fh, '>', $config or
+  			    die "Can't open $config: $!\n";
+  			print $fh "; This file is used internally by ",
+  			          "git-svn\n" or die
+  				  "Couldn't write to $config: $!\n";
+  			print $fh "; You should not have to edit it\n" or
+  			      die "Couldn't write to $config: $!\n";
+  			close $fh or die "Couldn't close $config: $!\n";
+  		}
+  		command('config', @args);
+  	};
+  	my $err = $@;
+  	if (defined $old_config) {
+  		$ENV{GIT_CONFIG} = $old_config;
+  	} else {
+  		delete $ENV{GIT_CONFIG};
+  	}
+  	die $err if $err;
+  	wantarray ? @ret : $ret[0];
+  }
+  
+  sub tmp_index_do {
+  	my ($self, $sub) = @_;
+  	my $old_index = $ENV{GIT_INDEX_FILE};
+  	$ENV{GIT_INDEX_FILE} = $self->{index};
+  	$@ = undef;
+  	my @ret = eval {
+  		my ($dir, $base) = ($self->{index} =~ m#^(.*?)/?([^/]+)$#);
+  		mkpath([$dir]) unless -d $dir;
+  		&$sub;
+  	};
+  	my $err = $@;
+  	if (defined $old_index) {
+  		$ENV{GIT_INDEX_FILE} = $old_index;
+  	} else {
+  		delete $ENV{GIT_INDEX_FILE};
+  	}
+  	die $err if $err;
+  	wantarray ? @ret : $ret[0];
+  }
+  
+  sub assert_index_clean {
+  	my ($self, $treeish) = @_;
+  
+  	$self->tmp_index_do(sub {
+  		command_noisy('read-tree', $treeish) unless -e $self->{index};
+  		my $x = command_oneline('write-tree');
+  		my ($y) = (command(qw/cat-file commit/, $treeish) =~
+  		           /^tree ($::sha1)/mo);
+  		return if $y eq $x;
+  
+  		warn "Index mismatch: $y != $x\nrereading $treeish\n";
+  		unlink $self->{index} or die "unlink $self->{index}: $!\n";
+  		command_noisy('read-tree', $treeish);
+  		$x = command_oneline('write-tree');
+  		if ($y ne $x) {
+  			fatal "trees ($treeish) $y != $x\n",
+  			      "Something is seriously wrong...";
+  		}
+  	});
+  }
+  
+  sub get_commit_parents {
+  	my ($self, $log_entry) = @_;
+  	my (%seen, @ret, @tmp);
+  	# legacy support for 'set-tree'; this is only used by set_tree_cb:
+  	if (my $ip = $self->{inject_parents}) {
+  		if (my $commit = delete $ip->{$log_entry->{revision}}) {
+  			push @tmp, $commit;
+  		}
+  	}
+  	if (my $cur = ::verify_ref($self->refname.'^0')) {
+  		push @tmp, $cur;
+  	}
+  	if (my $ipd = $self->{inject_parents_dcommit}) {
+  		if (my $commit = delete $ipd->{$log_entry->{revision}}) {
+  			push @tmp, @$commit;
+  		}
+  	}
+  	push @tmp, $_ foreach (@{$log_entry->{parents}}, @tmp);
+  	while (my $p = shift @tmp) {
+  		next if $seen{$p};
+  		$seen{$p} = 1;
+  		push @ret, $p;
+  	}
+  	@ret;
+  }
+  
+  sub rewrite_root {
+  	my ($self) = @_;
+  	return $self->{-rewrite_root} if exists $self->{-rewrite_root};
+  	my $k = "svn-remote.$self->{repo_id}.rewriteRoot";
+  	my $rwr = eval { command_oneline(qw/config --get/, $k) };
+  	if ($rwr) {
+  		$rwr =~ s#/+$##;
+  		if ($rwr !~ m#^[a-z\+]+://#) {
+  			die "$rwr is not a valid URL (key: $k)\n";
+  		}
+  	}
+  	$self->{-rewrite_root} = $rwr;
+  }
+  
+  sub rewrite_uuid {
+  	my ($self) = @_;
+  	return $self->{-rewrite_uuid} if exists $self->{-rewrite_uuid};
+  	my $k = "svn-remote.$self->{repo_id}.rewriteUUID";
+  	my $rwid = eval { command_oneline(qw/config --get/, $k) };
+  	if ($rwid) {
+  		$rwid =~ s#/+$##;
+  		if ($rwid !~ m#^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$#) {
+  			die "$rwid is not a valid UUID (key: $k)\n";
+  		}
+  	}
+  	$self->{-rewrite_uuid} = $rwid;
+  }
+  
+  sub metadata_url {
+  	my ($self) = @_;
+  	my $url = $self->rewrite_root || $self->url;
+  	return canonicalize_url( add_path_to_url( $url, $self->path ) );
+  }
+  
+  sub full_url {
+  	my ($self) = @_;
+  	return canonicalize_url( add_path_to_url( $self->url, $self->path ) );
+  }
+  
+  sub full_pushurl {
+  	my ($self) = @_;
+  	if ($self->{pushurl}) {
+  		return canonicalize_url( add_path_to_url( $self->{pushurl}, $self->path ) );
+  	} else {
+  		return $self->full_url;
+  	}
+  }
+  
+  sub set_commit_header_env {
+  	my ($log_entry) = @_;
+  	my %env;
+  	foreach my $ned (qw/NAME EMAIL DATE/) {
+  		foreach my $ac (qw/AUTHOR COMMITTER/) {
+  			$env{"GIT_${ac}_${ned}"} = $ENV{"GIT_${ac}_${ned}"};
+  		}
+  	}
+  
+  	$ENV{GIT_AUTHOR_NAME} = $log_entry->{name};
+  	$ENV{GIT_AUTHOR_EMAIL} = $log_entry->{email};
+  	$ENV{GIT_AUTHOR_DATE} = $ENV{GIT_COMMITTER_DATE} = $log_entry->{date};
+  
+  	$ENV{GIT_COMMITTER_NAME} = (defined $log_entry->{commit_name})
+  						? $log_entry->{commit_name}
+  						: $log_entry->{name};
+  	$ENV{GIT_COMMITTER_EMAIL} = (defined $log_entry->{commit_email})
+  						? $log_entry->{commit_email}
+  						: $log_entry->{email};
+  	\%env;
+  }
+  
+  sub restore_commit_header_env {
+  	my ($env) = @_;
+  	foreach my $ned (qw/NAME EMAIL DATE/) {
+  		foreach my $ac (qw/AUTHOR COMMITTER/) {
+  			my $k = "GIT_${ac}_${ned}";
+  			if (defined $env->{$k}) {
+  				$ENV{$k} = $env->{$k};
+  			} else {
+  				delete $ENV{$k};
+  			}
+  		}
+  	}
+  }
+  
+  sub gc {
+  	command_noisy('gc', '--auto');
+  };
+  
+  sub do_git_commit {
+  	my ($self, $log_entry) = @_;
+  	my $lr = $self->last_rev;
+  	if (defined $lr && $lr >= $log_entry->{revision}) {
+  		die "Last fetched revision of ", $self->refname,
+  		    " was r$lr, but we are about to fetch: ",
+  		    "r$log_entry->{revision}!\n";
+  	}
+  	if (my $c = $self->rev_map_get($log_entry->{revision})) {
+  		croak "$log_entry->{revision} = $c already exists! ",
+  		      "Why are we refetching it?\n";
+  	}
+  	my $old_env = set_commit_header_env($log_entry);
+  	my $tree = $log_entry->{tree};
+  	if (!defined $tree) {
+  		$tree = $self->tmp_index_do(sub {
+  		                            command_oneline('write-tree') });
+  	}
+  	die "Tree is not a valid sha1: $tree\n" if $tree !~ /^$::sha1$/o;
+  
+  	my @exec = ('git', 'commit-tree', $tree);
+  	foreach ($self->get_commit_parents($log_entry)) {
+  		push @exec, '-p', $_;
+  	}
+  	defined(my $pid = open3(my $msg_fh, my $out_fh, '>&STDERR', @exec))
+  	                                                           or croak $!;
+  	binmode $msg_fh;
+  
+  	# we always get UTF-8 from SVN, but we may want our commits in
+  	# a different encoding.
+  	if (my $enc = Git::config('i18n.commitencoding')) {
+  		require Encode;
+  		Encode::from_to($log_entry->{log}, 'UTF-8', $enc);
+  	}
+  	print $msg_fh $log_entry->{log} or croak $!;
+  	restore_commit_header_env($old_env);
+  	unless ($self->no_metadata) {
+  		print $msg_fh "\ngit-svn-id: $log_entry->{metadata}\n"
+  		              or croak $!;
+  	}
+  	$msg_fh->flush == 0 or croak $!;
+  	close $msg_fh or croak $!;
+  	chomp(my $commit = do { local $/; <$out_fh> });
+  	close $out_fh or croak $!;
+  	waitpid $pid, 0;
+  	croak $? if $?;
+  	if ($commit !~ /^$::sha1$/o) {
+  		die "Failed to commit, invalid sha1: $commit\n";
+  	}
+  
+  	$self->rev_map_set($log_entry->{revision}, $commit, 1);
+  
+  	$self->{last_rev} = $log_entry->{revision};
+  	$self->{last_commit} = $commit;
+  	print "r$log_entry->{revision}" unless $::_q > 1;
+  	if (defined $log_entry->{svm_revision}) {
+  		 print " (\@$log_entry->{svm_revision})" unless $::_q > 1;
+  		 $self->rev_map_set($log_entry->{svm_revision}, $commit,
+  		                   0, $self->svm_uuid);
+  	}
+  	print " = $commit ($self->{ref_id})\n" unless $::_q > 1;
+  	if (--$_gc_nr == 0) {
+  		$_gc_nr = $_gc_period;
+  		gc();
+  	}
+  	return $commit;
+  }
+  
+  sub match_paths {
+  	my ($self, $paths, $r) = @_;
+  	return 1 if $self->path eq '';
+  	if (my $path = $paths->{"/".$self->path}) {
+  		return ($path->{action} eq 'D') ? 0 : 1;
+  	}
+  	$self->{path_regex} ||= qr{^/\Q@{[$self->path]}\E/};
+  	if (grep /$self->{path_regex}/, keys %$paths) {
+  		return 1;
+  	}
+  	my $c = '';
+  	foreach (split m#/#, $self->path) {
+  		$c .= "/$_";
+  		next unless ($paths->{$c} &&
+  		             ($paths->{$c}->{action} =~ /^[AR]$/));
+  		if ($self->ra->check_path($self->path, $r) ==
+  		    $SVN::Node::dir) {
+  			return 1;
+  		}
+  	}
+  	return 0;
+  }
+  
+  sub find_parent_branch {
+  	my ($self, $paths, $rev) = @_;
+  	return undef unless $self->follow_parent;
+  	unless (defined $paths) {
+  		my $err_handler = $SVN::Error::handler;
+  		$SVN::Error::handler = \&Git::SVN::Ra::skip_unknown_revs;
+  		$self->ra->get_log([$self->path], $rev, $rev, 0, 1, 1,
+  				   sub { $paths = $_[0] });
+  		$SVN::Error::handler = $err_handler;
+  	}
+  	return undef unless defined $paths;
+  
+  	# look for a parent from another branch:
+  	my @b_path_components = split m#/#, $self->path;
+  	my @a_path_components;
+  	my $i;
+  	while (@b_path_components) {
+  		$i = $paths->{'/'.join('/', @b_path_components)};
+  		last if $i && defined $i->{copyfrom_path};
+  		unshift(@a_path_components, pop(@b_path_components));
+  	}
+  	return undef unless defined $i && defined $i->{copyfrom_path};
+  	my $branch_from = $i->{copyfrom_path};
+  	if (@a_path_components) {
+  		print STDERR "branch_from: $branch_from => ";
+  		$branch_from .= '/'.join('/', @a_path_components);
+  		print STDERR $branch_from, "\n";
+  	}
+  	my $r = $i->{copyfrom_rev};
+  	my $repos_root = $self->ra->{repos_root};
+  	my $url = $self->ra->url;
+  	my $new_url = canonicalize_url( add_path_to_url( $url, $branch_from ) );
+  	print STDERR  "Found possible branch point: ",
+  	              "$new_url => ", $self->full_url, ", $r\n"
+  	              unless $::_q > 1;
+  	$branch_from =~ s#^/##;
+  	my $gs = $self->other_gs($new_url, $url,
+  		                 $branch_from, $r, $self->{ref_id});
+  	my ($r0, $parent) = $gs->find_rev_before($r, 1);
+  	{
+  		my ($base, $head);
+  		if (!defined $r0 || !defined $parent) {
+  			($base, $head) = parse_revision_argument(0, $r);
+  		} else {
+  			if ($r0 < $r) {
+  				$gs->ra->get_log([$gs->path], $r0 + 1, $r, 1,
+  					0, 1, sub { $base = $_[1] - 1 });
+  			}
+  		}
+  		if (defined $base && $base <= $r) {
+  			$gs->fetch($base, $r);
+  		}
+  		($r0, $parent) = $gs->find_rev_before($r, 1);
+  	}
+  	if (defined $r0 && defined $parent) {
+  		print STDERR "Found branch parent: ($self->{ref_id}) $parent\n"
+  		             unless $::_q > 1;
+  		my $ed;
+  		if ($self->ra->can_do_switch) {
+  			$self->assert_index_clean($parent);
+  			print STDERR "Following parent with do_switch\n"
+  			             unless $::_q > 1;
+  			# do_switch works with svn/trunk >= r22312, but that
+  			# is not included with SVN 1.4.3 (the latest version
+  			# at the moment), so we can't rely on it
+  			$self->{last_rev} = $r0;
+  			$self->{last_commit} = $parent;
+  			$ed = Git::SVN::Fetcher->new($self, $gs->path);
+  			$gs->ra->gs_do_switch($r0, $rev, $gs,
+  					      $self->full_url, $ed)
+  			  or die "SVN connection failed somewhere...\n";
+  		} elsif ($self->ra->trees_match($new_url, $r0,
+  			                        $self->full_url, $rev)) {
+  			print STDERR "Trees match:\n",
+  			             "  $new_url\@$r0\n",
+  			             "  ${\$self->full_url}\@$rev\n",
+  			             "Following parent with no changes\n"
+  			             unless $::_q > 1;
+  			$self->tmp_index_do(sub {
+  			    command_noisy('read-tree', $parent);
+  			});
+  			$self->{last_commit} = $parent;
+  		} else {
+  			print STDERR "Following parent with do_update\n"
+  			             unless $::_q > 1;
+  			$ed = Git::SVN::Fetcher->new($self);
+  			$self->ra->gs_do_update($rev, $rev, $self, $ed)
+  			  or die "SVN connection failed somewhere...\n";
+  		}
+  		print STDERR "Successfully followed parent\n" unless $::_q > 1;
+  		return $self->make_log_entry($rev, [$parent], $ed, $r0, $branch_from);
+  	}
+  	return undef;
+  }
+  
+  sub do_fetch {
+  	my ($self, $paths, $rev) = @_;
+  	my $ed;
+  	my ($last_rev, @parents);
+  	if (my $lc = $self->last_commit) {
+  		# we can have a branch that was deleted, then re-added
+  		# under the same name but copied from another path, in
+  		# which case we'll have multiple parents (we don't
+  		# want to break the original ref or lose copypath info):
+  		if (my $log_entry = $self->find_parent_branch($paths, $rev)) {
+  			push @{$log_entry->{parents}}, $lc;
+  			return $log_entry;
+  		}
+  		$ed = Git::SVN::Fetcher->new($self);
+  		$last_rev = $self->{last_rev};
+  		$ed->{c} = $lc;
+  		@parents = ($lc);
+  	} else {
+  		$last_rev = $rev;
+  		if (my $log_entry = $self->find_parent_branch($paths, $rev)) {
+  			return $log_entry;
+  		}
+  		$ed = Git::SVN::Fetcher->new($self);
+  	}
+  	unless ($self->ra->gs_do_update($last_rev, $rev, $self, $ed)) {
+  		die "SVN connection failed somewhere...\n";
+  	}
+  	$self->make_log_entry($rev, \@parents, $ed, $last_rev, $self->path);
+  }
+  
+  sub mkemptydirs {
+  	my ($self, $r) = @_;
+  
+  	# add/remove/collect a paths table
+  	#
+  	# Paths are split into a tree of nodes, stored as a hash of hashes.
+  	#
+  	# Each node contains a 'path' entry for the path (if any) associated
+  	# with that node and a 'children' entry for any nodes under that
+  	# location.
+  	#
+  	# Removing a path requires a hash lookup for each component then
+  	# dropping that node (and anything under it), which is substantially
+  	# faster than a grep slice into a single hash of paths for large
+  	# numbers of paths.
+  	#
+  	# For a large (200K) number of empty_dir directives this reduces
+  	# scanning time to 3 seconds vs 10 minutes for grep+delete on a single
+  	# hash of paths.
+  	sub add_path {
+  		my ($paths_table, $path) = @_;
+  		my $node_ref;
+  
+  		foreach my $x (split('/', $path)) {
+  			if (!exists($paths_table->{$x})) {
+  				$paths_table->{$x} = { children => {} };
+  			}
+  
+  			$node_ref = $paths_table->{$x};
+  			$paths_table = $paths_table->{$x}->{children};
+  		}
+  
+  		$node_ref->{path} = $path;
+  	}
+  
+  	sub remove_path {
+  		my ($paths_table, $path) = @_;
+  		my $nodes_ref;
+  		my $node_name;
+  
+  		foreach my $x (split('/', $path)) {
+  			if (!exists($paths_table->{$x})) {
+  				return;
+  			}
+  
+  			$nodes_ref = $paths_table;
+  			$node_name = $x;
+  
+  			$paths_table = $paths_table->{$x}->{children};
+  		}
+  
+  		delete($nodes_ref->{$node_name});
+  	}
+  
+  	sub collect_paths {
+  		my ($paths_table, $paths_ref) = @_;
+  
+  		foreach my $v (values %$paths_table) {
+  			my $p = $v->{path};
+  			my $c = $v->{children};
+  
+  			collect_paths($c, $paths_ref);
+  
+  			if (defined($p)) {
+  				push(@$paths_ref, $p);
+  			}
+  		}
+  	}
+  
+  	sub scan {
+  		my ($r, $paths_table, $line) = @_;
+  		if (defined $r && $line =~ /^r(\d+)$/) {
+  			return 0 if $1 > $r;
+  		} elsif ($line =~ /^  \+empty_dir: (.+)$/) {
+  			add_path($paths_table, $1);
+  		} elsif ($line =~ /^  \-empty_dir: (.+)$/) {
+  			remove_path($paths_table, $1);
+  		}
+  		1; # continue
+  	};
+  
+  	my @empty_dirs;
+  	my %paths_table;
+  
+  	my $gz_file = "$self->{dir}/unhandled.log.gz";
+  	if (-f $gz_file) {
+  		if (!can_compress()) {
+  			warn "Compress::Zlib could not be found; ",
+  			     "empty directories in $gz_file will not be read\n";
+  		} else {
+  			my $gz = Compress::Zlib::gzopen($gz_file, "rb") or
+  				die "Unable to open $gz_file: $!\n";
+  			my $line;
+  			while ($gz->gzreadline($line) > 0) {
+  				scan($r, \%paths_table, $line) or last;
+  			}
+  			$gz->gzclose;
+  		}
+  	}
+  
+  	if (open my $fh, '<', "$self->{dir}/unhandled.log") {
+  		binmode $fh or croak "binmode: $!";
+  		while (<$fh>) {
+  			scan($r, \%paths_table, $_) or last;
+  		}
+  		close $fh;
+  	}
+  
+  	collect_paths(\%paths_table, \@empty_dirs);
+  	my $strip = qr/\A\Q@{[$self->path]}\E(?:\/|$)/;
+  	foreach my $d (sort @empty_dirs) {
+  		$d = uri_decode($d);
+  		$d =~ s/$strip//;
+  		next unless length($d);
+  		next if -d $d;
+  		if (-e $d) {
+  			warn "$d exists but is not a directory\n";
+  		} else {
+  			print "creating empty directory: $d\n";
+  			mkpath([$d]);
+  		}
+  	}
+  }
+  
+  sub get_untracked {
+  	my ($self, $ed) = @_;
+  	my @out;
+  	my $h = $ed->{empty};
+  	foreach (sort keys %$h) {
+  		my $act = $h->{$_} ? '+empty_dir' : '-empty_dir';
+  		push @out, "  $act: " . uri_encode($_);
+  		warn "W: $act: $_\n";
+  	}
+  	foreach my $t (qw/dir_prop file_prop/) {
+  		$h = $ed->{$t} or next;
+  		foreach my $path (sort keys %$h) {
+  			my $ppath = $path eq '' ? '.' : $path;
+  			foreach my $prop (sort keys %{$h->{$path}}) {
+  				next if $SKIP_PROP{$prop};
+  				my $v = $h->{$path}->{$prop};
+  				my $t_ppath_prop = "$t: " .
+  				                    uri_encode($ppath) . ' ' .
+  				                    uri_encode($prop);
+  				if (defined $v) {
+  					push @out, "  +$t_ppath_prop " .
+  					           uri_encode($v);
+  				} else {
+  					push @out, "  -$t_ppath_prop";
+  				}
+  			}
+  		}
+  	}
+  	foreach my $t (qw/absent_file absent_directory/) {
+  		$h = $ed->{$t} or next;
+  		foreach my $parent (sort keys %$h) {
+  			foreach my $path (sort @{$h->{$parent}}) {
+  				push @out, "  $t: " .
+  				           uri_encode("$parent/$path");
+  				warn "W: $t: $parent/$path ",
+  				     "Insufficient permissions?\n";
+  			}
+  		}
+  	}
+  	\@out;
+  }
+  
+  # parse_svn_date(DATE)
+  # --------------------
+  # Given a date (in UTC) from Subversion, return a string in the format
+  # "<TZ Offset> <local date/time>" that Git will use.
+  #
+  # By default the parsed date will be in UTC; if $Git::SVN::_localtime
+  # is true we'll convert it to the local timezone instead.
+  sub parse_svn_date {
+  	my $date = shift || return '+0000 1970-01-01 00:00:00';
+  	my ($Y,$m,$d,$H,$M,$S) = ($date =~ /^(\d{4})\-(\d\d)\-(\d\d)T
+  	                                    (\d\d?)\:(\d\d)\:(\d\d)\.\d*Z$/x) or
+  	                                 croak "Unable to parse date: $date\n";
+  	my $parsed_date;    # Set next.
+  
+  	if ($Git::SVN::_localtime) {
+  		# Translate the Subversion datetime to an epoch time.
+  		# Begin by switching ourselves to $date's timezone, UTC.
+  		my $old_env_TZ = $ENV{TZ};
+  		$ENV{TZ} = 'UTC';
+  
+  		my $epoch_in_UTC =
+  		    Time::Local::timelocal($S, $M, $H, $d, $m - 1, $Y - 1900);
+  
+  		# Determine our local timezone (including DST) at the
+  		# time of $epoch_in_UTC.  $Git::SVN::Log::TZ stored the
+  		# value of TZ, if any, at the time we were run.
+  		if (defined $Git::SVN::Log::TZ) {
+  			$ENV{TZ} = $Git::SVN::Log::TZ;
+  		} else {
+  			delete $ENV{TZ};
+  		}
+  
+  		my $our_TZ = get_tz_offset($epoch_in_UTC);
+  
+  		# This converts $epoch_in_UTC into our local timezone.
+  		my ($sec, $min, $hour, $mday, $mon, $year,
+  		    $wday, $yday, $isdst) = localtime($epoch_in_UTC);
+  
+  		$parsed_date = sprintf('%s %04d-%02d-%02d %02d:%02d:%02d',
+  				       $our_TZ, $year + 1900, $mon + 1,
+  				       $mday, $hour, $min, $sec);
+  
+  		# Reset us to the timezone in effect when we entered
+  		# this routine.
+  		if (defined $old_env_TZ) {
+  			$ENV{TZ} = $old_env_TZ;
+  		} else {
+  			delete $ENV{TZ};
+  		}
+  	} else {
+  		$parsed_date = "+0000 $Y-$m-$d $H:$M:$S";
+  	}
+  
+  	return $parsed_date;
+  }
+  
+  sub other_gs {
+  	my ($self, $new_url, $url,
+  	    $branch_from, $r, $old_ref_id) = @_;
+  	my $gs = Git::SVN->find_by_url($new_url, $url, $branch_from);
+  	unless ($gs) {
+  		my $ref_id = $old_ref_id;
+  		$ref_id =~ s/\@\d+-*$//;
+  		$ref_id .= "\@$r";
+  		# just grow a tail if we're not unique enough :x
+  		$ref_id .= '-' while find_ref($ref_id);
+  		my ($u, $p, $repo_id) = ($new_url, '', $ref_id);
+  		if ($u =~ s#^\Q$url\E(/|$)##) {
+  			$p = $u;
+  			$u = $url;
+  			$repo_id = $self->{repo_id};
+  		}
+  		while (1) {
+  			# It is possible to tag two different subdirectories at
+  			# the same revision.  If the url for an existing ref
+  			# does not match, we must either find a ref with a
+  			# matching url or create a new ref by growing a tail.
+  			$gs = Git::SVN->init($u, $p, $repo_id, $ref_id, 1);
+  			my (undef, $max_commit) = $gs->rev_map_max(1);
+  			last if (!$max_commit);
+  			my ($url) = ::cmt_metadata($max_commit);
+  			last if ($url eq $gs->metadata_url);
+  			$ref_id .= '-';
+  		}
+  		print STDERR "Initializing parent: $ref_id\n" unless $::_q > 1;
+  	}
+  	$gs
+  }
+  
+  sub call_authors_prog {
+  	my ($orig_author) = @_;
+  	$orig_author = command_oneline('rev-parse', '--sq-quote', $orig_author);
+  	my $author = `$::_authors_prog $orig_author`;
+  	if ($? != 0) {
+  		die "$::_authors_prog failed with exit code $?\n"
+  	}
+  	if ($author =~ /^\s*(.+?)\s*<(.*)>\s*$/) {
+  		my ($name, $email) = ($1, $2);
+  		$email = undef if length $2 == 0;
+  		return [$name, $email];
+  	} else {
+  		die "Author: $orig_author: $::_authors_prog returned "
+  			. "invalid author format: $author\n";
+  	}
+  }
+  
+  sub check_author {
+  	my ($author) = @_;
+  	if (!defined $author || length $author == 0) {
+  		$author = '(no author)';
+  	}
+  	if (!defined $::users{$author}) {
+  		if (defined $::_authors_prog) {
+  			$::users{$author} = call_authors_prog($author);
+  		} elsif (defined $::_authors) {
+  			die "Author: $author not defined in $::_authors file\n";
+  		}
+  	}
+  	$author;
+  }
+  
+  sub find_extra_svk_parents {
+  	my ($self, $tickets, $parents) = @_;
+  	# aha!  svk:merge property changed...
+  	my @tickets = split "\n", $tickets;
+  	my @known_parents;
+  	for my $ticket ( @tickets ) {
+  		my ($uuid, $path, $rev) = split /:/, $ticket;
+  		if ( $uuid eq $self->ra_uuid ) {
+  			my $repos_root = $self->url;
+  			my $branch_from = $path;
+  			$branch_from =~ s{^/}{};
+  			my $gs = $self->other_gs(add_path_to_url( $repos_root, $branch_from ),
+  			                         $repos_root,
+  			                         $branch_from,
+  			                         $rev,
+  			                         $self->{ref_id});
+  			if ( my $commit = $gs->rev_map_get($rev, $uuid) ) {
+  				# wahey!  we found it, but it might be
+  				# an old one (!)
+  				push @known_parents, [ $rev, $commit ];
+  			}
+  		}
+  	}
+  	# Ordering matters; highest-numbered commit merge tickets
+  	# first, as they may account for later merge ticket additions
+  	# or changes.
+  	@known_parents = map {$_->[1]} sort {$b->[0] <=> $a->[0]} @known_parents;
+  	for my $parent ( @known_parents ) {
+  		my @cmd = ('rev-list', $parent, map { "^$_" } @$parents );
+  		my ($msg_fh, $ctx) = command_output_pipe(@cmd);
+  		my $new;
+  		while ( <$msg_fh> ) {
+  			$new=1;last;
+  		}
+  		command_close_pipe($msg_fh, $ctx);
+  		if ( $new ) {
+  			print STDERR
+  			    "Found merge parent (svk:merge ticket): $parent\n";
+  			push @$parents, $parent;
+  		}
+  	}
+  }
+  
+  sub lookup_svn_merge {
+  	my $uuid = shift;
+  	my $url = shift;
+  	my $source = shift;
+  	my $revs = shift;
+  
+  	my $path = $source;
+  	$path =~ s{^/}{};
+  	my $gs = Git::SVN->find_by_url($url.$source, $url, $path);
+  	if ( !$gs ) {
+  		warn "Couldn't find revmap for $url$source\n";
+  		return;
+  	}
+  	my @ranges = split ",", $revs;
+  	my ($tip, $tip_commit);
+  	my @merged_commit_ranges;
+  	# find the tip
+  	for my $range ( @ranges ) {
+  		if ($range =~ /[*]$/) {
+  			warn "W: Ignoring partial merge in svn:mergeinfo "
+  				."dirprop: $source:$range\n";
+  			next;
+  		}
+  		my ($bottom, $top) = split "-", $range;
+  		$top ||= $bottom;
+  		my $bottom_commit = $gs->find_rev_after( $bottom, 1, $top );
+  		my $top_commit = $gs->find_rev_before( $top, 1, $bottom );
+  
+  		unless ($top_commit and $bottom_commit) {
+  			warn "W: unknown path/rev in svn:mergeinfo "
+  				."dirprop: $source:$range\n";
+  			next;
+  		}
+  
+  		if (scalar(command('rev-parse', "$bottom_commit^@"))) {
+  			push @merged_commit_ranges,
+  			     "$bottom_commit^..$top_commit";
+  		} else {
+  			push @merged_commit_ranges, "$top_commit";
+  		}
+  
+  		if ( !defined $tip or $top > $tip ) {
+  			$tip = $top;
+  			$tip_commit = $top_commit;
+  		}
+  	}
+  	return ($tip_commit, @merged_commit_ranges);
+  }
+  
+  sub _rev_list {
+  	my ($msg_fh, $ctx) = command_output_pipe(
+  		"rev-list", @_,
+  	       );
+  	my @rv;
+  	while ( <$msg_fh> ) {
+  		chomp;
+  		push @rv, $_;
+  	}
+  	command_close_pipe($msg_fh, $ctx);
+  	@rv;
+  }
+  
+  sub check_cherry_pick2 {
+  	my $base = shift;
+  	my $tip = shift;
+  	my $parents = shift;
+  	my @ranges = @_;
+  	my %commits = map { $_ => 1 }
+  		_rev_list("--no-merges", $tip, "--not", $base, @$parents, "--");
+  	for my $range ( @ranges ) {
+  		delete @commits{_rev_list($range, "--")};
+  	}
+  	for my $commit (keys %commits) {
+  		if (has_no_changes($commit)) {
+  			delete $commits{$commit};
+  		}
+  	}
+  	my @k = (keys %commits);
+  	return (scalar @k, $k[0]);
+  }
+  
+  sub has_no_changes {
+  	my $commit = shift;
+  
+  	my @revs = split / /, command_oneline(
+  		qw(rev-list --parents -1 -m), $commit);
+  
+  	# Commits with no parents, e.g. the start of a partial branch,
+  	# have changes by definition.
+  	return 1 if (@revs < 2);
+  
+  	# Commits with multiple parents, e.g a merge, have no changes
+  	# by definition.
+  	return 0 if (@revs > 2);
+  
+  	return (command_oneline("rev-parse", "$commit^{tree}") eq
+  		command_oneline("rev-parse", "$commit~1^{tree}"));
+  }
+  
+  sub tie_for_persistent_memoization {
+  	my $hash = shift;
+  	my $path = shift;
+  
+  	unless ($memo_backend) {
+  		if (eval { require Git::SVN::Memoize::YAML; 1}) {
+  			$memo_backend = 1;
+  		} else {
+  			require Memoize::Storable;
+  			$memo_backend = -1;
+  		}
+  	}
+  
+  	if ($memo_backend > 0) {
+  		tie %$hash => 'Git::SVN::Memoize::YAML', "$path.yaml";
+  	} else {
+  		# first verify that any existing file can actually be loaded
+  		# (it may have been saved by an incompatible version)
+  		my $db = "$path.db";
+  		if (-e $db) {
+  			use Storable qw(retrieve);
+  
+  			if (!eval { retrieve($db); 1 }) {
+  				unlink $db or die "unlink $db failed: $!";
+  			}
+  		}
+  		tie %$hash => 'Memoize::Storable', $db, 'nstore';
+  	}
+  }
+  
+  # The GIT_DIR environment variable is not always set until after the command
+  # line arguments are processed, so we can't memoize in a BEGIN block.
+  {
+  	my $memoized = 0;
+  
+  	sub memoize_svn_mergeinfo_functions {
+  		return if $memoized;
+  		$memoized = 1;
+  
+  		my $cache_path = svn_dir() . '/.caches/';
+  		mkpath([$cache_path]) unless -d $cache_path;
+  
+  		my %lookup_svn_merge_cache;
+  		my %check_cherry_pick2_cache;
+  		my %has_no_changes_cache;
+  
+  		tie_for_persistent_memoization(\%lookup_svn_merge_cache,
+  		    "$cache_path/lookup_svn_merge");
+  		memoize 'lookup_svn_merge',
+  			SCALAR_CACHE => 'FAULT',
+  			LIST_CACHE => ['HASH' => \%lookup_svn_merge_cache],
+  		;
+  
+  		tie_for_persistent_memoization(\%check_cherry_pick2_cache,
+  		    "$cache_path/check_cherry_pick2");
+  		memoize 'check_cherry_pick2',
+  			SCALAR_CACHE => 'FAULT',
+  			LIST_CACHE => ['HASH' => \%check_cherry_pick2_cache],
+  		;
+  
+  		tie_for_persistent_memoization(\%has_no_changes_cache,
+  		    "$cache_path/has_no_changes");
+  		memoize 'has_no_changes',
+  			SCALAR_CACHE => ['HASH' => \%has_no_changes_cache],
+  			LIST_CACHE => 'FAULT',
+  		;
+  	}
+  
+  	sub unmemoize_svn_mergeinfo_functions {
+  		return if not $memoized;
+  		$memoized = 0;
+  
+  		Memoize::unmemoize 'lookup_svn_merge';
+  		Memoize::unmemoize 'check_cherry_pick2';
+  		Memoize::unmemoize 'has_no_changes';
+  	}
+  
+  	sub clear_memoized_mergeinfo_caches {
+  		die "Only call this method in non-memoized context" if ($memoized);
+  
+  		my $cache_path = svn_dir() . '/.caches/';
+  		return unless -d $cache_path;
+  
+  		for my $cache_file (("$cache_path/lookup_svn_merge",
+  				     "$cache_path/check_cherry_pick", # old
+  				     "$cache_path/check_cherry_pick2",
+  				     "$cache_path/has_no_changes")) {
+  			for my $suffix (qw(yaml db)) {
+  				my $file = "$cache_file.$suffix";
+  				next unless -e $file;
+  				unlink($file) or die "unlink($file) failed: $!\n";
+  			}
+  		}
+  	}
+  
+  
+  	Memoize::memoize 'Git::SVN::repos_root';
+  }
+  
+  END {
+  	# Force cache writeout explicitly instead of waiting for
+  	# global destruction to avoid segfault in Storable:
+  	# http://rt.cpan.org/Public/Bug/Display.html?id=36087
+  	unmemoize_svn_mergeinfo_functions();
+  }
+  
+  sub parents_exclude {
+  	my $parents = shift;
+  	my @commits = @_;
+  	return unless @commits;
+  
+  	my @excluded;
+  	my $excluded;
+  	do {
+  		my @cmd = ('rev-list', "-1", @commits, "--not", @$parents );
+  		$excluded = command_oneline(@cmd);
+  		if ( $excluded ) {
+  			my @new;
+  			my $found;
+  			for my $commit ( @commits ) {
+  				if ( $commit eq $excluded ) {
+  					push @excluded, $commit;
+  					$found++;
+  				}
+  				else {
+  					push @new, $commit;
+  				}
+  			}
+  			die "saw commit '$excluded' in rev-list output, "
+  				."but we didn't ask for that commit (wanted: @commits --not @$parents)"
+  					unless $found;
+  			@commits = @new;
+  		}
+  	}
+  		while ($excluded and @commits);
+  
+  	return @excluded;
+  }
+  
+  # Compute what's new in svn:mergeinfo.
+  sub mergeinfo_changes {
+  	my ($self, $old_path, $old_rev, $path, $rev, $mergeinfo_prop) = @_;
+  	my %minfo = map {split ":", $_ } split "\n", $mergeinfo_prop;
+  	my $old_minfo = {};
+  
+  	my $ra = $self->ra;
+  	# Give up if $old_path isn't in the repo.
+  	# This is probably a merge on a subtree.
+  	if ($ra->check_path($old_path, $old_rev) != $SVN::Node::dir) {
+  		warn "W: ignoring svn:mergeinfo on $old_path, ",
+  			"directory didn't exist in r$old_rev\n";
+  		return {};
+  	}
+  	my (undef, undef, $props) = $ra->get_dir($old_path, $old_rev);
+  	if (defined $props->{"svn:mergeinfo"}) {
+  		my %omi = map {split ":", $_ } split "\n",
+  			$props->{"svn:mergeinfo"};
+  		$old_minfo = \%omi;
+  	}
+  
+  	my %changes = ();
+  	foreach my $p (keys %minfo) {
+  		my $a = $old_minfo->{$p} || "";
+  		my $b = $minfo{$p};
+  		# Omit merged branches whose ranges lists are unchanged.
+  		next if $a eq $b;
+  		# Remove any common range list prefix.
+  		($a ^ $b) =~ /^[\0]*/;
+  		my $common_prefix = rindex $b, ",", $+[0] - 1;
+  		$changes{$p} = substr $b, $common_prefix + 1;
+  	}
+  	print STDERR "Checking svn:mergeinfo changes since r$old_rev: ",
+  		scalar(keys %minfo), " sources, ",
+  		scalar(keys %changes), " changed\n";
+  
+  	return \%changes;
+  }
+  
+  # note: this function should only be called if the various dirprops
+  # have actually changed
+  sub find_extra_svn_parents {
+  	my ($self, $mergeinfo, $parents) = @_;
+  	# aha!  svk:merge property changed...
+  
+  	memoize_svn_mergeinfo_functions();
+  
+  	# We first search for merged tips which are not in our
+  	# history.  Then, we figure out which git revisions are in
+  	# that tip, but not this revision.  If all of those revisions
+  	# are now marked as merge, we can add the tip as a parent.
+  	my @merges = sort keys %$mergeinfo;
+  	my @merge_tips;
+  	my $url = $self->url;
+  	my $uuid = $self->ra_uuid;
+  	my @all_ranges;
+  	for my $merge ( @merges ) {
+  		my ($tip_commit, @ranges) =
+  			lookup_svn_merge( $uuid, $url,
+  					  $merge, $mergeinfo->{$merge} );
+  		unless (!$tip_commit or
+  				grep { $_ eq $tip_commit } @$parents ) {
+  			push @merge_tips, $tip_commit;
+  			push @all_ranges, @ranges;
+  		} else {
+  			push @merge_tips, undef;
+  		}
+  	}
+  
+  	my %excluded = map { $_ => 1 }
+  		parents_exclude($parents, grep { defined } @merge_tips);
+  
+  	# check merge tips for new parents
+  	my @new_parents;
+  	for my $merge_tip ( @merge_tips ) {
+  		my $merge = shift @merges;
+  		next unless $merge_tip and $excluded{$merge_tip};
+  		my $spec = "$merge:$mergeinfo->{$merge}";
+  
+  		# check out 'new' tips
+  		my $merge_base;
+  		eval {
+  			$merge_base = command_oneline(
+  				"merge-base",
+  				@$parents, $merge_tip,
+  			);
+  		};
+  		if ($@) {
+  			die "An error occurred during merge-base"
+  				unless $@->isa("Git::Error::Command");
+  
+  			warn "W: Cannot find common ancestor between ".
+  			     "@$parents and $merge_tip. Ignoring merge info.\n";
+  			next;
+  		}
+  
+  		# double check that there are no missing non-merge commits
+  		my ($ninc, $ifirst) = check_cherry_pick2(
+  			$merge_base, $merge_tip,
+  			$parents,
+  			@all_ranges,
+  		       );
+  
+  		if ($ninc) {
+  			warn "W: svn cherry-pick ignored ($spec) - missing " .
+  				"$ninc commit(s) (eg $ifirst)\n";
+  		} else {
+  			warn "Found merge parent ($spec): ", $merge_tip, "\n";
+  			push @new_parents, $merge_tip;
+  		}
+  	}
+  
+  	# cater for merges which merge commits from multiple branches
+  	if ( @new_parents > 1 ) {
+  		for ( my $i = 0; $i <= $#new_parents; $i++ ) {
+  			for ( my $j = 0; $j <= $#new_parents; $j++ ) {
+  				next if $i == $j;
+  				next unless $new_parents[$i];
+  				next unless $new_parents[$j];
+  				my $revs = command_oneline(
+  					"rev-list", "-1",
+  					"$new_parents[$i]..$new_parents[$j]",
+  				       );
+  				if ( !$revs ) {
+  					undef($new_parents[$j]);
+  				}
+  			}
+  		}
+  	}
+  	push @$parents, grep { defined } @new_parents;
+  }
+  
+  sub make_log_entry {
+  	my ($self, $rev, $parents, $ed, $parent_rev, $parent_path) = @_;
+  	my $untracked = $self->get_untracked($ed);
+  
+  	my @parents = @$parents;
+  	my $props = $ed->{dir_prop}{$self->path};
+  	if ($self->follow_parent) {
+  		my $tickets = $props->{"svk:merge"};
+  		if ($tickets) {
+  			$self->find_extra_svk_parents($tickets, \@parents);
+  		}
+  
+  		my $mergeinfo_prop = $props->{"svn:mergeinfo"};
+  		if ($mergeinfo_prop) {
+  			my $mi_changes = $self->mergeinfo_changes(
+  						$parent_path,
+  						$parent_rev,
+  						$self->path,
+  						$rev,
+  						$mergeinfo_prop);
+  			$self->find_extra_svn_parents($mi_changes, \@parents);
+  		}
+  	}
+  
+  	open my $un, '>>', "$self->{dir}/unhandled.log" or croak $!;
+  	print $un "r$rev\n" or croak $!;
+  	print $un $_, "\n" foreach @$untracked;
+  	my %log_entry = ( parents => \@parents, revision => $rev,
+  	                  log => '');
+  
+  	my $headrev;
+  	my $logged = delete $self->{logged_rev_props};
+  	if (!$logged || $self->{-want_revprops}) {
+  		my $rp = $self->ra->rev_proplist($rev);
+  		foreach (sort keys %$rp) {
+  			my $v = $rp->{$_};
+  			if (/^svn:(author|date|log)$/) {
+  				$log_entry{$1} = $v;
+  			} elsif ($_ eq 'svm:headrev') {
+  				$headrev = $v;
+  			} else {
+  				print $un "  rev_prop: ", uri_encode($_), ' ',
+  					  uri_encode($v), "\n";
+  			}
+  		}
+  	} else {
+  		map { $log_entry{$_} = $logged->{$_} } keys %$logged;
+  	}
+  	close $un or croak $!;
+  
+  	$log_entry{date} = parse_svn_date($log_entry{date});
+  	$log_entry{log} .= "\n";
+  	my $author = $log_entry{author} = check_author($log_entry{author});
+  	my ($name, $email) = defined $::users{$author} ? @{$::users{$author}}
+  						       : ($author, undef);
+  
+  	my ($commit_name, $commit_email) = ($name, $email);
+  	if ($_use_log_author) {
+  		my $name_field;
+  		if ($log_entry{log} =~ /From:\s+(.*\S)\s*\n/i) {
+  			$name_field = $1;
+  		} elsif ($log_entry{log} =~ /Signed-off-by:\s+(.*\S)\s*\n/i) {
+  			$name_field = $1;
+  		}
+  		if (!defined $name_field) {
+  			if (!defined $email) {
+  				$email = $name;
+  			}
+  		} elsif ($name_field =~ /(.*?)\s+<(.*)>/) {
+  			($name, $email) = ($1, $2);
+  		} elsif ($name_field =~ /(.*)@/) {
+  			($name, $email) = ($1, $name_field);
+  		} else {
+  			($name, $email) = ($name_field, $name_field);
+  		}
+  	}
+  	if (defined $headrev && $self->use_svm_props) {
+  		if ($self->rewrite_root) {
+  			die "Can't have both 'useSvmProps' and 'rewriteRoot' ",
+  			    "options set!\n";
+  		}
+  		if ($self->rewrite_uuid) {
+  			die "Can't have both 'useSvmProps' and 'rewriteUUID' ",
+  			    "options set!\n";
+  		}
+  		my ($uuid, $r) = $headrev =~ m{^([a-f\d\-]{30,}):(\d+)$}i;
+  		# we don't want "SVM: initializing mirror for junk" ...
+  		return undef if $r == 0;
+  		my $svm = $self->svm;
+  		if ($uuid ne $svm->{uuid}) {
+  			die "UUID mismatch on SVM path:\n",
+  			    "expected: $svm->{uuid}\n",
+  			    "     got: $uuid\n";
+  		}
+  		my $full_url = $self->full_url;
+  		$full_url =~ s#^\Q$svm->{replace}\E(/|$)#$svm->{source}$1# or
+  		             die "Failed to replace '$svm->{replace}' with ",
+  		                 "'$svm->{source}' in $full_url\n";
+  		# throw away username for storing in records
+  		remove_username($full_url);
+  		$log_entry{metadata} = "$full_url\@$r $uuid";
+  		$log_entry{svm_revision} = $r;
+  		$email ||= "$author\@$uuid";
+  		$commit_email ||= "$author\@$uuid";
+  	} elsif ($self->use_svnsync_props) {
+  		my $full_url = canonicalize_url(
+  			add_path_to_url( $self->svnsync->{url}, $self->path )
+  		);
+  		remove_username($full_url);
+  		my $uuid = $self->svnsync->{uuid};
+  		$log_entry{metadata} = "$full_url\@$rev $uuid";
+  		$email ||= "$author\@$uuid";
+  		$commit_email ||= "$author\@$uuid";
+  	} else {
+  		my $url = $self->metadata_url;
+  		remove_username($url);
+  		my $uuid = $self->rewrite_uuid || $self->ra->get_uuid;
+  		$log_entry{metadata} = "$url\@$rev " . $uuid;
+  		$email ||= "$author\@" . $uuid;
+  		$commit_email ||= "$author\@" . $uuid;
+  	}
+  	$log_entry{name} = $name;
+  	$log_entry{email} = $email;
+  	$log_entry{commit_name} = $commit_name;
+  	$log_entry{commit_email} = $commit_email;
+  	\%log_entry;
+  }
+  
+  sub fetch {
+  	my ($self, $min_rev, $max_rev, @parents) = @_;
+  	my ($last_rev, $last_commit) = $self->last_rev_commit;
+  	my ($base, $head) = $self->get_fetch_range($min_rev, $max_rev);
+  	$self->ra->gs_fetch_loop_common($base, $head, [$self]);
+  }
+  
+  sub set_tree_cb {
+  	my ($self, $log_entry, $tree, $rev, $date, $author) = @_;
+  	$self->{inject_parents} = { $rev => $tree };
+  	$self->fetch(undef, undef);
+  }
+  
+  sub set_tree {
+  	my ($self, $tree) = (shift, shift);
+  	my $log_entry = ::get_commit_entry($tree);
+  	unless ($self->{last_rev}) {
+  		fatal("Must have an existing revision to commit");
+  	}
+  	my %ed_opts = ( r => $self->{last_rev},
+  	                log => $log_entry->{log},
+  	                ra => $self->ra,
+  	                tree_a => $self->{last_commit},
+  	                tree_b => $tree,
+  	                editor_cb => sub {
+  			       $self->set_tree_cb($log_entry, $tree, @_) },
+  	                svn_path => $self->path );
+  	if (!Git::SVN::Editor->new(\%ed_opts)->apply_diff) {
+  		print "No changes\nr$self->{last_rev} = $tree\n";
+  	}
+  }
+  
+  sub rebuild_from_rev_db {
+  	my ($self, $path) = @_;
+  	my $r = -1;
+  	open my $fh, '<', $path or croak "open: $!";
+  	binmode $fh or croak "binmode: $!";
+  	while (<$fh>) {
+  		length($_) == 41 or croak "inconsistent size in ($_) != 41";
+  		chomp($_);
+  		++$r;
+  		next if $_ eq ('0' x 40);
+  		$self->rev_map_set($r, $_);
+  		print "r$r = $_\n";
+  	}
+  	close $fh or croak "close: $!";
+  	unlink $path or croak "unlink: $!";
+  }
+  
+  #define a global associate map to record rebuild status
+  my %rebuild_status;
+  #define a global associate map to record rebuild verify status
+  my %rebuild_verify_status;
+  
+  sub rebuild {
+  	my ($self) = @_;
+  	my $map_path = $self->map_path;
+  	my $partial = (-e $map_path && ! -z $map_path);
+  	my $verify_key = $self->refname.'^0';
+  	if (!$rebuild_verify_status{$verify_key}) {
+  		my $verify_result = ::verify_ref($verify_key);
+  		if ($verify_result) {
+  			$rebuild_verify_status{$verify_key} = 1;
+  		}
+  	}
+  	if (!$rebuild_verify_status{$verify_key}) {
+  		return;
+  	}
+  	if (!$partial && ($self->use_svm_props || $self->no_metadata)) {
+  		my $rev_db = $self->rev_db_path;
+  		$self->rebuild_from_rev_db($rev_db);
+  		if ($self->use_svm_props) {
+  			my $svm_rev_db = $self->rev_db_path($self->svm_uuid);
+  			$self->rebuild_from_rev_db($svm_rev_db);
+  		}
+  		$self->unlink_rev_db_symlink;
+  		return;
+  	}
+  	print "Rebuilding $map_path ...\n" if (!$partial);
+  	my ($base_rev, $head) = ($partial ? $self->rev_map_max_norebuild(1) :
+  		(undef, undef));
+  	my $key_value = ($head ? "$head.." : "") . $self->refname;
+  	if (exists $rebuild_status{$key_value}) {
+  		print "Done rebuilding $map_path\n" if (!$partial || !$head);
+  		my $rev_db_path = $self->rev_db_path;
+  		if (-f $self->rev_db_path) {
+  			unlink $self->rev_db_path or croak "unlink: $!";
+  		}
+  		$self->unlink_rev_db_symlink;
+  		return;
+  	}
+  	my ($log, $ctx) =
+  		command_output_pipe(qw/rev-list --pretty=raw --reverse/,
+  				$key_value,
+  				'--');
+  	$rebuild_status{$key_value} = 1;
+  	my $metadata_url = $self->metadata_url;
+  	remove_username($metadata_url);
+  	my $svn_uuid = $self->rewrite_uuid || $self->ra_uuid;
+  	my $c;
+  	while (<$log>) {
+  		if ( m{^commit ($::sha1)$} ) {
+  			$c = $1;
+  			next;
+  		}
+  		next unless s{^\s*(git-svn-id:)}{$1};
+  		my ($url, $rev, $uuid) = ::extract_metadata($_);
+  		remove_username($url);
+  
+  		# ignore merges (from set-tree)
+  		next if (!defined $rev || !$uuid);
+  
+  		# if we merged or otherwise started elsewhere, this is
+  		# how we break out of it
+  		if (($uuid ne $svn_uuid) ||
+  		    ($metadata_url && $url && ($url ne $metadata_url))) {
+  			next;
+  		}
+  		if ($partial && $head) {
+  			print "Partial-rebuilding $map_path ...\n";
+  			print "Currently at $base_rev = $head\n";
+  			$head = undef;
+  		}
+  
+  		$self->rev_map_set($rev, $c);
+  		print "r$rev = $c\n";
+  	}
+  	command_close_pipe($log, $ctx);
+  	print "Done rebuilding $map_path\n" if (!$partial || !$head);
+  	my $rev_db_path = $self->rev_db_path;
+  	if (-f $self->rev_db_path) {
+  		unlink $self->rev_db_path or croak "unlink: $!";
+  	}
+  	$self->unlink_rev_db_symlink;
+  }
+  
+  # rev_map:
+  # Tie::File seems to be prone to offset errors if revisions get sparse,
+  # it's not that fast, either.  Tie::File is also not in Perl 5.6.  So
+  # one of my favorite modules is out :<  Next up would be one of the DBM
+  # modules, but I'm not sure which is most portable...
+  #
+  # This is the replacement for the rev_db format, which was too big
+  # and inefficient for large repositories with a lot of sparse history
+  # (mainly tags)
+  #
+  # The format is this:
+  #   - 24 bytes for every record,
+  #     * 4 bytes for the integer representing an SVN revision number
+  #     * 20 bytes representing the sha1 of a git commit
+  #   - No empty padding records like the old format
+  #     (except the last record, which can be overwritten)
+  #   - new records are written append-only since SVN revision numbers
+  #     increase monotonically
+  #   - lookups on SVN revision number are done via a binary search
+  #   - Piping the file to xxd -c24 is a good way of dumping it for
+  #     viewing or editing (piped back through xxd -r), should the need
+  #     ever arise.
+  #   - The last record can be padding revision with an all-zero sha1
+  #     This is used to optimize fetch performance when using multiple
+  #     "fetch" directives in .git/config
+  #
+  # These files are disposable unless noMetadata or useSvmProps is set
+  
+  sub _rev_map_set {
+  	my ($fh, $rev, $commit) = @_;
+  
+  	binmode $fh or croak "binmode: $!";
+  	my $size = (stat($fh))[7];
+  	($size % 24) == 0 or croak "inconsistent size: $size";
+  
+  	my $wr_offset = 0;
+  	if ($size > 0) {
+  		sysseek($fh, -24, SEEK_END) or croak "seek: $!";
+  		my $read = sysread($fh, my $buf, 24) or croak "read: $!";
+  		$read == 24 or croak "read only $read bytes (!= 24)";
+  		my ($last_rev, $last_commit) = unpack(rev_map_fmt, $buf);
+  		if ($last_commit eq ('0' x40)) {
+  			if ($size >= 48) {
+  				sysseek($fh, -48, SEEK_END) or croak "seek: $!";
+  				$read = sysread($fh, $buf, 24) or
+  				    croak "read: $!";
+  				$read == 24 or
+  				    croak "read only $read bytes (!= 24)";
+  				($last_rev, $last_commit) =
+  				    unpack(rev_map_fmt, $buf);
+  				if ($last_commit eq ('0' x40)) {
+  					croak "inconsistent .rev_map\n";
+  				}
+  			}
+  			if ($last_rev >= $rev) {
+  				croak "last_rev is higher!: $last_rev >= $rev";
+  			}
+  			$wr_offset = -24;
+  		}
+  	}
+  	sysseek($fh, $wr_offset, SEEK_END) or croak "seek: $!";
+  	syswrite($fh, pack(rev_map_fmt, $rev, $commit), 24) == 24 or
+  	  croak "write: $!";
+  }
+  
+  sub _rev_map_reset {
+  	my ($fh, $rev, $commit) = @_;
+  	my $c = _rev_map_get($fh, $rev);
+  	$c eq $commit or die "_rev_map_reset(@_) commit $c does not match!\n";
+  	my $offset = sysseek($fh, 0, SEEK_CUR) or croak "seek: $!";
+  	truncate $fh, $offset or croak "truncate: $!";
+  }
+  
+  sub mkfile {
+  	my ($path) = @_;
+  	unless (-e $path) {
+  		my ($dir, $base) = ($path =~ m#^(.*?)/?([^/]+)$#);
+  		mkpath([$dir]) unless -d $dir;
+  		open my $fh, '>>', $path or die "Couldn't create $path: $!\n";
+  		close $fh or die "Couldn't close (create) $path: $!\n";
+  	}
+  }
+  
+  sub rev_map_set {
+  	my ($self, $rev, $commit, $update_ref, $uuid) = @_;
+  	defined $commit or die "missing arg3\n";
+  	length $commit == 40 or die "arg3 must be a full SHA1 hexsum\n";
+  	my $db = $self->map_path($uuid);
+  	my $db_lock = "$db.lock";
+  	my $sigmask;
+  	$update_ref ||= 0;
+  	if ($update_ref) {
+  		$sigmask = POSIX::SigSet->new();
+  		my $signew = POSIX::SigSet->new(SIGINT, SIGHUP, SIGTERM,
+  			SIGALRM, SIGUSR1, SIGUSR2);
+  		sigprocmask(SIG_BLOCK, $signew, $sigmask) or
+  			croak "Can't block signals: $!";
+  	}
+  	mkfile($db);
+  
+  	$LOCKFILES{$db_lock} = 1;
+  	my $sync;
+  	# both of these options make our .rev_db file very, very important
+  	# and we can't afford to lose it because rebuild() won't work
+  	if ($self->use_svm_props || $self->no_metadata) {
+  		require File::Copy;
+  		$sync = 1;
+  		File::Copy::copy($db, $db_lock) or die "rev_map_set(@_): ",
+  					   "Failed to copy: ",
+  					   "$db => $db_lock ($!)\n";
+  	} else {
+  		rename $db, $db_lock or die "rev_map_set(@_): ",
+  					    "Failed to rename: ",
+  					    "$db => $db_lock ($!)\n";
+  	}
+  
+  	sysopen(my $fh, $db_lock, O_RDWR | O_CREAT)
+  	     or croak "Couldn't open $db_lock: $!\n";
+  	if ($update_ref eq 'reset') {
+  		clear_memoized_mergeinfo_caches();
+  		_rev_map_reset($fh, $rev, $commit);
+  	} else {
+  		_rev_map_set($fh, $rev, $commit);
+  	}
+  
+  	if ($sync) {
+  		$fh->flush or die "Couldn't flush $db_lock: $!\n";
+  		$fh->sync or die "Couldn't sync $db_lock: $!\n";
+  	}
+  	close $fh or croak $!;
+  	if ($update_ref) {
+  		$_head = $self;
+  		my $note = "";
+  		$note = " ($update_ref)" if ($update_ref !~ /^\d*$/);
+  		command_noisy('update-ref', '-m', "r$rev$note",
+  		              $self->refname, $commit);
+  	}
+  	rename $db_lock, $db or die "rev_map_set(@_): ", "Failed to rename: ",
+  	                            "$db_lock => $db ($!)\n";
+  	delete $LOCKFILES{$db_lock};
+  	if ($update_ref) {
+  		sigprocmask(SIG_SETMASK, $sigmask) or
+  			croak "Can't restore signal mask: $!";
+  	}
+  }
+  
+  # If want_commit, this will return an array of (rev, commit) where
+  # commit _must_ be a valid commit in the archive.
+  # Otherwise, it'll return the max revision (whether or not the
+  # commit is valid or just a 0x40 placeholder).
+  sub rev_map_max {
+  	my ($self, $want_commit) = @_;
+  	$self->rebuild;
+  	my ($r, $c) = $self->rev_map_max_norebuild($want_commit);
+  	$want_commit ? ($r, $c) : $r;
+  }
+  
+  sub rev_map_max_norebuild {
+  	my ($self, $want_commit) = @_;
+  	my $map_path = $self->map_path;
+  	stat $map_path or return $want_commit ? (0, undef) : 0;
+  	sysopen(my $fh, $map_path, O_RDONLY) or croak "open: $!";
+  	binmode $fh or croak "binmode: $!";
+  	my $size = (stat($fh))[7];
+  	($size % 24) == 0 or croak "inconsistent size: $size";
+  
+  	if ($size == 0) {
+  		close $fh or croak "close: $!";
+  		return $want_commit ? (0, undef) : 0;
+  	}
+  
+  	sysseek($fh, -24, SEEK_END) or croak "seek: $!";
+  	sysread($fh, my $buf, 24) == 24 or croak "read: $!";
+  	my ($r, $c) = unpack(rev_map_fmt, $buf);
+  	if ($want_commit && $c eq ('0' x40)) {
+  		if ($size < 48) {
+  			return $want_commit ? (0, undef) : 0;
+  		}
+  		sysseek($fh, -48, SEEK_END) or croak "seek: $!";
+  		sysread($fh, $buf, 24) == 24 or croak "read: $!";
+  		($r, $c) = unpack(rev_map_fmt, $buf);
+  		if ($c eq ('0'x40)) {
+  			croak "Penultimate record is all-zeroes in $map_path";
+  		}
+  	}
+  	close $fh or croak "close: $!";
+  	$want_commit ? ($r, $c) : $r;
+  }
+  
+  sub rev_map_get {
+  	my ($self, $rev, $uuid) = @_;
+  	my $map_path = $self->map_path($uuid);
+  	return undef unless -e $map_path;
+  
+  	sysopen(my $fh, $map_path, O_RDONLY) or croak "open: $!";
+  	my $c = _rev_map_get($fh, $rev);
+  	close($fh) or croak "close: $!";
+  	$c
+  }
+  
+  sub _rev_map_get {
+  	my ($fh, $rev) = @_;
+  
+  	binmode $fh or croak "binmode: $!";
+  	my $size = (stat($fh))[7];
+  	($size % 24) == 0 or croak "inconsistent size: $size";
+  
+  	if ($size == 0) {
+  		return undef;
+  	}
+  
+  	my ($l, $u) = (0, $size - 24);
+  	my ($r, $c, $buf);
+  
+  	while ($l <= $u) {
+  		my $i = int(($l/24 + $u/24) / 2) * 24;
+  		sysseek($fh, $i, SEEK_SET) or croak "seek: $!";
+  		sysread($fh, my $buf, 24) == 24 or croak "read: $!";
+  		my ($r, $c) = unpack(rev_map_fmt, $buf);
+  
+  		if ($r < $rev) {
+  			$l = $i + 24;
+  		} elsif ($r > $rev) {
+  			$u = $i - 24;
+  		} else { # $r == $rev
+  			return $c eq ('0' x 40) ? undef : $c;
+  		}
+  	}
+  	undef;
+  }
+  
+  # Finds the first svn revision that exists on (if $eq_ok is true) or
+  # before $rev for the current branch.  It will not search any lower
+  # than $min_rev.  Returns the git commit hash and svn revision number
+  # if found, else (undef, undef).
+  sub find_rev_before {
+  	my ($self, $rev, $eq_ok, $min_rev) = @_;
+  	--$rev unless $eq_ok;
+  	$min_rev ||= 1;
+  	my $max_rev = $self->rev_map_max;
+  	$rev = $max_rev if ($rev > $max_rev);
+  	while ($rev >= $min_rev) {
+  		if (my $c = $self->rev_map_get($rev)) {
+  			return ($rev, $c);
+  		}
+  		--$rev;
+  	}
+  	return (undef, undef);
+  }
+  
+  # Finds the first svn revision that exists on (if $eq_ok is true) or
+  # after $rev for the current branch.  It will not search any higher
+  # than $max_rev.  Returns the git commit hash and svn revision number
+  # if found, else (undef, undef).
+  sub find_rev_after {
+  	my ($self, $rev, $eq_ok, $max_rev) = @_;
+  	++$rev unless $eq_ok;
+  	$max_rev ||= $self->rev_map_max;
+  	while ($rev <= $max_rev) {
+  		if (my $c = $self->rev_map_get($rev)) {
+  			return ($rev, $c);
+  		}
+  		++$rev;
+  	}
+  	return (undef, undef);
+  }
+  
+  sub _new {
+  	my ($class, $repo_id, $ref_id, $path) = @_;
+  	unless (defined $repo_id && length $repo_id) {
+  		$repo_id = $default_repo_id;
+  	}
+  	unless (defined $ref_id && length $ref_id) {
+  		# Access the prefix option from the git-svn main program if it's loaded.
+  		my $prefix = defined &::opt_prefix ? ::opt_prefix() : "";
+  		$_[2] = $ref_id =
+  		             "refs/remotes/$prefix$default_ref_id";
+  	}
+  	$_[1] = $repo_id;
+  	my $svn_dir = svn_dir();
+  	my $dir = "$svn_dir/$ref_id";
+  
+  	# Older repos imported by us used $svn_dir/foo instead of
+  	# $svn_dir/refs/remotes/foo when tracking refs/remotes/foo
+  	if ($ref_id =~ m{^refs/remotes/(.+)}) {
+  		my $old_dir = "$svn_dir/$1";
+  		if (-d $old_dir && ! -d $dir) {
+  			$dir = $old_dir;
+  		}
+  	}
+  
+  	$_[3] = $path = '' unless (defined $path);
+  	mkpath([$dir]);
+  	my $obj = bless {
+  		ref_id => $ref_id, dir => $dir, index => "$dir/index",
+  	        config => "$svn_dir/config",
+  	        map_root => "$dir/.rev_map", repo_id => $repo_id }, $class;
+  
+  	# Ensure it gets canonicalized
+  	$obj->path($path);
+  
+  	return $obj;
+  }
+  
+  sub path {
+  	my $self = shift;
+  
+  	if (@_) {
+  		my $path = shift;
+  		$self->{_path} = canonicalize_path($path);
+  		return;
+  	}
+  
+  	return $self->{_path};
+  }
+  
+  sub url {
+  	my $self = shift;
+  
+  	if (@_) {
+  		my $url = shift;
+  		$self->{url} = canonicalize_url($url);
+  		return;
+  	}
+  
+  	return $self->{url};
+  }
+  
+  # for read-only access of old .rev_db formats
+  sub unlink_rev_db_symlink {
+  	my ($self) = @_;
+  	my $link = $self->rev_db_path;
+  	$link =~ s/\.[\w-]+$// or croak "missing UUID at the end of $link";
+  	if (-l $link) {
+  		unlink $link or croak "unlink: $link failed!";
+  	}
+  }
+  
+  sub rev_db_path {
+  	my ($self, $uuid) = @_;
+  	my $db_path = $self->map_path($uuid);
+  	$db_path =~ s{/\.rev_map\.}{/\.rev_db\.}
+  	    or croak "map_path: $db_path does not contain '/.rev_map.' !";
+  	$db_path;
+  }
+  
+  # the new replacement for .rev_db
+  sub map_path {
+  	my ($self, $uuid) = @_;
+  	$uuid ||= $self->ra_uuid;
+  	"$self->{map_root}.$uuid";
+  }
+  
+  sub uri_encode {
+  	my ($f) = @_;
+  	$f =~ s#([^a-zA-Z0-9\*!\:_\./\-])#sprintf("%%%02X",ord($1))#eg;
+  	$f
+  }
+  
+  sub uri_decode {
+  	my ($f) = @_;
+  	$f =~ s#%([0-9a-fA-F]{2})#chr(hex($1))#eg;
+  	$f
+  }
+  
+  sub remove_username {
+  	$_[0] =~ s{^([^:]*://)[^@]+@}{$1};
+  }
+  
+  1;
+GIT_SVN
+
+$fatpacked{"Git/SVN/Editor.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT_SVN_EDITOR';
+  package Git::SVN::Editor;
+  use vars qw/@ISA $_rmdir $_cp_similarity $_find_copies_harder $_rename_limit/;
+  use strict;
+  use warnings;
+  use SVN::Core;
+  use SVN::Delta;
+  use Carp qw/croak/;
+  use Git qw/command command_oneline command_noisy command_output_pipe
+             command_input_pipe command_close_pipe
+             command_bidi_pipe command_close_bidi_pipe
+             get_record/;
+  
+  BEGIN {
+  	@ISA = qw(SVN::Delta::Editor);
+  }
+  
+  sub new {
+  	my ($class, $opts) = @_;
+  	foreach (qw/svn_path r ra tree_a tree_b log editor_cb/) {
+  		die "$_ required!\n" unless (defined $opts->{$_});
+  	}
+  
+  	my $pool = SVN::Pool->new;
+  	my $mods = generate_diff($opts->{tree_a}, $opts->{tree_b});
+  	my $types = check_diff_paths($opts->{ra}, $opts->{svn_path},
+  	                             $opts->{r}, $mods);
+  
+  	# $opts->{ra} functions should not be used after this:
+  	my @ce  = $opts->{ra}->get_commit_editor($opts->{log},
+  	                                        $opts->{editor_cb}, $pool);
+  	my $self = SVN::Delta::Editor->new(@ce, $pool);
+  	bless $self, $class;
+  	foreach (qw/svn_path r tree_a tree_b/) {
+  		$self->{$_} = $opts->{$_};
+  	}
+  	$self->{url} = $opts->{ra}->{url};
+  	$self->{mods} = $mods;
+  	$self->{types} = $types;
+  	$self->{pool} = $pool;
+  	$self->{bat} = { '' => $self->open_root($self->{r}, $self->{pool}) };
+  	$self->{rm} = { };
+  	$self->{path_prefix} = length $self->{svn_path} ?
+  	                       "$self->{svn_path}/" : '';
+  	$self->{config} = $opts->{config};
+  	$self->{mergeinfo} = $opts->{mergeinfo};
+  	$self->{pathnameencoding} = Git::config('svn.pathnameencoding');
+  	return $self;
+  }
+  
+  sub generate_diff {
+  	my ($tree_a, $tree_b) = @_;
+  	my @diff_tree = qw(diff-tree -z -r);
+  	if ($_cp_similarity) {
+  		push @diff_tree, "-C$_cp_similarity";
+  	} else {
+  		push @diff_tree, '-C';
+  	}
+  	push @diff_tree, '--find-copies-harder' if $_find_copies_harder;
+  	push @diff_tree, "-l$_rename_limit" if defined $_rename_limit;
+  	push @diff_tree, $tree_a, $tree_b;
+  	my ($diff_fh, $ctx) = command_output_pipe(@diff_tree);
+  	my $state = 'meta';
+  	my @mods;
+  	while (defined($_ = get_record($diff_fh, "\0"))) {
+  		if ($state eq 'meta' && /^:(\d{6})\s(\d{6})\s
+  					($::sha1)\s($::sha1)\s
+  					([MTCRAD])\d*$/xo) {
+  			push @mods, {	mode_a => $1, mode_b => $2,
+  					sha1_a => $3, sha1_b => $4,
+  					chg => $5 };
+  			if ($5 =~ /^(?:C|R)$/) {
+  				$state = 'file_a';
+  			} else {
+  				$state = 'file_b';
+  			}
+  		} elsif ($state eq 'file_a') {
+  			my $x = $mods[$#mods] or croak "Empty array\n";
+  			if ($x->{chg} !~ /^(?:C|R)$/) {
+  				croak "Error parsing $_, $x->{chg}\n";
+  			}
+  			$x->{file_a} = $_;
+  			$state = 'file_b';
+  		} elsif ($state eq 'file_b') {
+  			my $x = $mods[$#mods] or croak "Empty array\n";
+  			if (exists $x->{file_a} && $x->{chg} !~ /^(?:C|R)$/) {
+  				croak "Error parsing $_, $x->{chg}\n";
+  			}
+  			if (!exists $x->{file_a} && $x->{chg} =~ /^(?:C|R)$/) {
+  				croak "Error parsing $_, $x->{chg}\n";
+  			}
+  			$x->{file_b} = $_;
+  			$state = 'meta';
+  		} else {
+  			croak "Error parsing $_\n";
+  		}
+  	}
+  	command_close_pipe($diff_fh, $ctx);
+  	\@mods;
+  }
+  
+  sub check_diff_paths {
+  	my ($ra, $pfx, $rev, $mods) = @_;
+  	my %types;
+  	$pfx .= '/' if length $pfx;
+  
+  	sub type_diff_paths {
+  		my ($ra, $types, $path, $rev) = @_;
+  		my @p = split m#/+#, $path;
+  		my $c = shift @p;
+  		unless (defined $types->{$c}) {
+  			$types->{$c} = $ra->check_path($c, $rev);
+  		}
+  		while (@p) {
+  			$c .= '/' . shift @p;
+  			next if defined $types->{$c};
+  			$types->{$c} = $ra->check_path($c, $rev);
+  		}
+  	}
+  
+  	foreach my $m (@$mods) {
+  		foreach my $f (qw/file_a file_b/) {
+  			next unless defined $m->{$f};
+  			my ($dir) = ($m->{$f} =~ m#^(.*?)/?(?:[^/]+)$#);
+  			if (length $pfx.$dir && ! defined $types{$dir}) {
+  				type_diff_paths($ra, \%types, $pfx.$dir, $rev);
+  			}
+  		}
+  	}
+  	\%types;
+  }
+  
+  sub split_path {
+  	return ($_[0] =~ m#^(.*?)/?([^/]+)$#);
+  }
+  
+  sub repo_path {
+  	my ($self, $path) = @_;
+  	if (my $enc = $self->{pathnameencoding}) {
+  		require Encode;
+  		Encode::from_to($path, $enc, 'UTF-8');
+  	}
+  	$self->{path_prefix}.(defined $path ? $path : '');
+  }
+  
+  sub url_path {
+  	my ($self, $path) = @_;
+  	$path = $self->repo_path($path);
+  	if ($self->{url} =~ m#^https?://#) {
+  		# characters are taken from subversion/libsvn_subr/path.c
+  		$path =~ s#([^~a-zA-Z0-9_./!$&'()*+,-])#sprintf("%%%02X",ord($1))#eg;
+  	}
+  	$self->{url} . '/' . $path;
+  }
+  
+  sub rmdirs {
+  	my ($self) = @_;
+  	my $rm = $self->{rm};
+  	delete $rm->{''}; # we never delete the url we're tracking
+  	return unless %$rm;
+  
+  	foreach (keys %$rm) {
+  		my @d = split m#/#, $_;
+  		my $c = shift @d;
+  		$rm->{$c} = 1;
+  		while (@d) {
+  			$c .= '/' . shift @d;
+  			$rm->{$c} = 1;
+  		}
+  	}
+  	delete $rm->{$self->{svn_path}};
+  	delete $rm->{''}; # we never delete the url we're tracking
+  	return unless %$rm;
+  
+  	my ($fh, $ctx) = command_output_pipe(qw/ls-tree --name-only -r -z/,
+  	                                     $self->{tree_b});
+  	while (defined($_ = get_record($fh, "\0"))) {
+  		my @dn = split m#/#, $_;
+  		while (pop @dn) {
+  			delete $rm->{join '/', @dn};
+  		}
+  		unless (%$rm) {
+  			close $fh;
+  			return;
+  		}
+  	}
+  	command_close_pipe($fh, $ctx);
+  
+  	my ($r, $p, $bat) = ($self->{r}, $self->{pool}, $self->{bat});
+  	foreach my $d (sort { $b =~ tr#/#/# <=> $a =~ tr#/#/# } keys %$rm) {
+  		$self->close_directory($bat->{$d}, $p);
+  		my ($dn) = ($d =~ m#^(.*?)/?(?:[^/]+)$#);
+  		print "\tD+\t$d/\n" unless $::_q;
+  		$self->SUPER::delete_entry($d, $r, $bat->{$dn}, $p);
+  		delete $bat->{$d};
+  	}
+  }
+  
+  sub open_or_add_dir {
+  	my ($self, $full_path, $baton, $deletions) = @_;
+  	my $t = $self->{types}->{$full_path};
+  	if (!defined $t) {
+  		die "$full_path not known in r$self->{r} or we have a bug!\n";
+  	}
+  	{
+  		no warnings 'once';
+  		# SVN::Node::none and SVN::Node::file are used only once,
+  		# so we're shutting up Perl's warnings about them.
+  		if ($t == $SVN::Node::none || defined($deletions->{$full_path})) {
+  			return $self->add_directory($full_path, $baton,
+  			    undef, -1, $self->{pool});
+  		} elsif ($t == $SVN::Node::dir) {
+  			return $self->open_directory($full_path, $baton,
+  			    $self->{r}, $self->{pool});
+  		} # no warnings 'once'
+  		print STDERR "$full_path already exists in repository at ",
+  		    "r$self->{r} and it is not a directory (",
+  		    ($t == $SVN::Node::file ? 'file' : 'unknown'),"/$t)\n";
+  	} # no warnings 'once'
+  	exit 1;
+  }
+  
+  sub ensure_path {
+  	my ($self, $path, $deletions) = @_;
+  	my $bat = $self->{bat};
+  	my $repo_path = $self->repo_path($path);
+  	return $bat->{''} unless (length $repo_path);
+  
+  	my @p = split m#/+#, $repo_path;
+  	my $c = shift @p;
+  	$bat->{$c} ||= $self->open_or_add_dir($c, $bat->{''}, $deletions);
+  	while (@p) {
+  		my $c0 = $c;
+  		$c .= '/' . shift @p;
+  		$bat->{$c} ||= $self->open_or_add_dir($c, $bat->{$c0}, $deletions);
+  	}
+  	return $bat->{$c};
+  }
+  
+  # Subroutine to convert a globbing pattern to a regular expression.
+  # From perl cookbook.
+  sub glob2pat {
+  	my $globstr = shift;
+  	my %patmap = ('*' => '.*', '?' => '.', '[' => '[', ']' => ']');
+  	$globstr =~ s{(.)} { $patmap{$1} || "\Q$1" }ge;
+  	return '^' . $globstr . '$';
+  }
+  
+  sub check_autoprop {
+  	my ($self, $pattern, $properties, $file, $fbat) = @_;
+  	# Convert the globbing pattern to a regular expression.
+  	my $regex = glob2pat($pattern);
+  	# Check if the pattern matches the file name.
+  	if($file =~ m/($regex)/) {
+  		# Parse the list of properties to set.
+  		my @props = split(/;/, $properties);
+  		foreach my $prop (@props) {
+  			# Parse 'name=value' syntax and set the property.
+  			if ($prop =~ /([^=]+)=(.*)/) {
+  				my ($n,$v) = ($1,$2);
+  				for ($n, $v) {
+  					s/^\s+//; s/\s+$//;
+  				}
+  				$self->change_file_prop($fbat, $n, $v);
+  			}
+  		}
+  	}
+  }
+  
+  sub apply_autoprops {
+  	my ($self, $file, $fbat) = @_;
+  	my $conf_t = ${$self->{config}}{'config'};
+  	no warnings 'once';
+  	# Check [miscellany]/enable-auto-props in svn configuration.
+  	if (SVN::_Core::svn_config_get_bool(
+  		$conf_t,
+  		$SVN::_Core::SVN_CONFIG_SECTION_MISCELLANY,
+  		$SVN::_Core::SVN_CONFIG_OPTION_ENABLE_AUTO_PROPS,
+  		0)) {
+  		# Auto-props are enabled.  Enumerate them to look for matches.
+  		my $callback = sub {
+  			$self->check_autoprop($_[0], $_[1], $file, $fbat);
+  		};
+  		SVN::_Core::svn_config_enumerate(
+  			$conf_t,
+  			$SVN::_Core::SVN_CONFIG_SECTION_AUTO_PROPS,
+  			$callback);
+  	}
+  }
+  
+  sub check_attr {
+  	my ($attr,$path) = @_;
+  	my $val = command_oneline("check-attr", $attr, "--", $path);
+  	if ($val) { $val =~ s/^[^:]*:\s*[^:]*:\s*(.*)\s*$/$1/; }
+  	return $val;
+  }
+  
+  sub apply_manualprops {
+  	my ($self, $file, $fbat) = @_;
+  	my $pending_properties = check_attr( "svn-properties", $file );
+  	if ($pending_properties eq "") { return; }
+  	# Parse the list of properties to set.
+  	my @props = split(/;/, $pending_properties);
+  	# TODO: get existing properties to compare to
+  	# - this fails for add so currently not done
+  	# my $existing_props = ::get_svnprops($file);
+  	my $existing_props = {};
+  	# TODO: caching svn properties or storing them in .gitattributes
+  	# would make that faster
+  	foreach my $prop (@props) {
+  		# Parse 'name=value' syntax and set the property.
+  		if ($prop =~ /([^=]+)=(.*)/) {
+  			my ($n,$v) = ($1,$2);
+  			for ($n, $v) {
+  				s/^\s+//; s/\s+$//;
+  			}
+  			my $existing = $existing_props->{$n};
+  			if (!defined($existing) || $existing ne $v) {
+  			    $self->change_file_prop($fbat, $n, $v);
+  			}
+  		}
+  	}
+  }
+  
+  sub A {
+  	my ($self, $m, $deletions) = @_;
+  	my ($dir, $file) = split_path($m->{file_b});
+  	my $pbat = $self->ensure_path($dir, $deletions);
+  	my $fbat = $self->add_file($self->repo_path($m->{file_b}), $pbat,
+  					undef, -1);
+  	print "\tA\t$m->{file_b}\n" unless $::_q;
+  	$self->apply_autoprops($file, $fbat);
+  	$self->apply_manualprops($m->{file_b}, $fbat);
+  	$self->chg_file($fbat, $m);
+  	$self->close_file($fbat,undef,$self->{pool});
+  }
+  
+  sub C {
+  	my ($self, $m, $deletions) = @_;
+  	my ($dir, $file) = split_path($m->{file_b});
+  	my $pbat = $self->ensure_path($dir, $deletions);
+  	# workaround for a bug in svn serf backend (v1.8.5 and below):
+  	# store third argument to ->add_file() in a local variable, to make it
+  	# have the same lifetime as $fbat
+  	my $upa = $self->url_path($m->{file_a});
+  	my $fbat = $self->add_file($self->repo_path($m->{file_b}), $pbat,
+  				$upa, $self->{r});
+  	print "\tC\t$m->{file_a} => $m->{file_b}\n" unless $::_q;
+  	$self->apply_manualprops($m->{file_b}, $fbat);
+  	$self->chg_file($fbat, $m);
+  	$self->close_file($fbat,undef,$self->{pool});
+  }
+  
+  sub delete_entry {
+  	my ($self, $path, $pbat) = @_;
+  	my $rpath = $self->repo_path($path);
+  	my ($dir, $file) = split_path($rpath);
+  	$self->{rm}->{$dir} = 1;
+  	$self->SUPER::delete_entry($rpath, $self->{r}, $pbat, $self->{pool});
+  }
+  
+  sub R {
+  	my ($self, $m, $deletions) = @_;
+  	my ($dir, $file) = split_path($m->{file_b});
+  	my $pbat = $self->ensure_path($dir, $deletions);
+  	# workaround for a bug in svn serf backend, see comment in C() above
+  	my $upa = $self->url_path($m->{file_a});
+  	my $fbat = $self->add_file($self->repo_path($m->{file_b}), $pbat,
+  				$upa, $self->{r});
+  	print "\tR\t$m->{file_a} => $m->{file_b}\n" unless $::_q;
+  	$self->apply_autoprops($file, $fbat);
+  	$self->apply_manualprops($m->{file_b}, $fbat);
+  	$self->chg_file($fbat, $m);
+  	$self->close_file($fbat,undef,$self->{pool});
+  
+  	($dir, $file) = split_path($m->{file_a});
+  	$pbat = $self->ensure_path($dir, $deletions);
+  	$self->delete_entry($m->{file_a}, $pbat);
+  }
+  
+  sub M {
+  	my ($self, $m, $deletions) = @_;
+  	my ($dir, $file) = split_path($m->{file_b});
+  	my $pbat = $self->ensure_path($dir, $deletions);
+  	my $fbat = $self->open_file($self->repo_path($m->{file_b}),
+  				$pbat,$self->{r},$self->{pool});
+  	print "\t$m->{chg}\t$m->{file_b}\n" unless $::_q;
+  	$self->apply_manualprops($m->{file_b}, $fbat);
+  	$self->chg_file($fbat, $m);
+  	$self->close_file($fbat,undef,$self->{pool});
+  }
+  
+  sub T {
+  	my ($self, $m, $deletions) = @_;
+  
+  	# Work around subversion issue 4091: toggling the "is a
+  	# symlink" property requires removing and re-adding a
+  	# file or else "svn up" on affected clients trips an
+  	# assertion and aborts.
+  	if (($m->{mode_b} =~ /^120/ && $m->{mode_a} !~ /^120/) ||
+  	    ($m->{mode_b} !~ /^120/ && $m->{mode_a} =~ /^120/)) {
+  		$self->D({
+  			mode_a => $m->{mode_a}, mode_b => '000000',
+  			sha1_a => $m->{sha1_a}, sha1_b => '0' x 40,
+  			chg => 'D', file_b => $m->{file_b}
+  		}, $deletions);
+  		$self->A({
+  			mode_a => '000000', mode_b => $m->{mode_b},
+  			sha1_a => '0' x 40, sha1_b => $m->{sha1_b},
+  			chg => 'A', file_b => $m->{file_b}
+  		}, $deletions);
+  		return;
+  	}
+  
+  	$self->M($m, $deletions);
+  }
+  
+  sub change_file_prop {
+  	my ($self, $fbat, $pname, $pval) = @_;
+  	$self->SUPER::change_file_prop($fbat, $pname, $pval, $self->{pool});
+  }
+  
+  sub change_dir_prop {
+  	my ($self, $pbat, $pname, $pval) = @_;
+  	$self->SUPER::change_dir_prop($pbat, $pname, $pval, $self->{pool});
+  }
+  
+  sub _chg_file_get_blob ($$$$) {
+  	my ($self, $fbat, $m, $which) = @_;
+  	my $fh = $::_repository->temp_acquire("git_blob_$which");
+  	if ($m->{"mode_$which"} =~ /^120/) {
+  		print $fh 'link ' or croak $!;
+  		$self->change_file_prop($fbat,'svn:special','*');
+  	} elsif ($m->{mode_a} =~ /^120/ && $m->{"mode_$which"} !~ /^120/) {
+  		$self->change_file_prop($fbat,'svn:special',undef);
+  	}
+  	my $blob = $m->{"sha1_$which"};
+  	return ($fh,) if ($blob =~ /^0{40}$/);
+  	my $size = $::_repository->cat_blob($blob, $fh);
+  	croak "Failed to read object $blob" if ($size < 0);
+  	$fh->flush == 0 or croak $!;
+  	seek $fh, 0, 0 or croak $!;
+  
+  	my $exp = ::md5sum($fh);
+  	seek $fh, 0, 0 or croak $!;
+  	return ($fh, $exp);
+  }
+  
+  sub chg_file {
+  	my ($self, $fbat, $m) = @_;
+  	if ($m->{mode_b} =~ /755$/ && $m->{mode_a} !~ /755$/) {
+  		$self->change_file_prop($fbat,'svn:executable','*');
+  	} elsif ($m->{mode_b} !~ /755$/ && $m->{mode_a} =~ /755$/) {
+  		$self->change_file_prop($fbat,'svn:executable',undef);
+  	}
+  	my ($fh_a, $exp_a) = _chg_file_get_blob $self, $fbat, $m, 'a';
+  	my ($fh_b, $exp_b) = _chg_file_get_blob $self, $fbat, $m, 'b';
+  	my $pool = SVN::Pool->new;
+  	my $atd = $self->apply_textdelta($fbat, $exp_a, $pool);
+  	if (-s $fh_a) {
+  		my $txstream = SVN::TxDelta::new ($fh_a, $fh_b, $pool);
+  		my $res = SVN::TxDelta::send_txstream($txstream, @$atd, $pool);
+  		if (defined $res) {
+  			die "Unexpected result from send_txstream: $res\n",
+  			    "(SVN::Core::VERSION: $SVN::Core::VERSION)\n";
+  		}
+  	} else {
+  		my $got = SVN::TxDelta::send_stream($fh_b, @$atd, $pool);
+  		die "Checksum mismatch\nexpected: $exp_b\ngot: $got\n"
+  		    if ($got ne $exp_b);
+  	}
+  	Git::temp_release($fh_b, 1);
+  	Git::temp_release($fh_a, 1);
+  	$pool->clear;
+  }
+  
+  sub D {
+  	my ($self, $m, $deletions) = @_;
+  	my ($dir, $file) = split_path($m->{file_b});
+  	my $pbat = $self->ensure_path($dir, $deletions);
+  	print "\tD\t$m->{file_b}\n" unless $::_q;
+  	$self->delete_entry($m->{file_b}, $pbat);
+  }
+  
+  sub close_edit {
+  	my ($self) = @_;
+  	my ($p,$bat) = ($self->{pool}, $self->{bat});
+  	foreach (sort { $b =~ tr#/#/# <=> $a =~ tr#/#/# } keys %$bat) {
+  		next if $_ eq '';
+  		$self->close_directory($bat->{$_}, $p);
+  	}
+  	$self->close_directory($bat->{''}, $p);
+  	$self->SUPER::close_edit($p);
+  	$p->clear;
+  }
+  
+  sub abort_edit {
+  	my ($self) = @_;
+  	$self->SUPER::abort_edit($self->{pool});
+  }
+  
+  sub DESTROY {
+  	my $self = shift;
+  	$self->SUPER::DESTROY(@_);
+  	$self->{pool}->clear;
+  }
+  
+  # this drives the editor
+  sub apply_diff {
+  	my ($self) = @_;
+  	my $mods = $self->{mods};
+  	my %o = ( D => 0, C => 1, R => 2, A => 3, M => 4, T => 5 );
+  	my %deletions;
+  
+  	foreach my $m (@$mods) {
+  		if ($m->{chg} eq "D") {
+  			$deletions{$m->{file_b}} = 1;
+  		}
+  	}
+  
+  	foreach my $m (sort { $o{$a->{chg}} <=> $o{$b->{chg}} } @$mods) {
+  		my $f = $m->{chg};
+  		if (defined $o{$f}) {
+  			$self->$f($m, \%deletions);
+  		} else {
+  			fatal("Invalid change type: $f");
+  		}
+  	}
+  
+  	if (defined($self->{mergeinfo})) {
+  		$self->change_dir_prop($self->{bat}{''}, "svn:mergeinfo",
+  			               $self->{mergeinfo});
+  	}
+  	$self->rmdirs if $_rmdir;
+  	if (@$mods == 0 && !defined($self->{mergeinfo})) {
+  		$self->abort_edit;
+  	} else {
+  		$self->close_edit;
+  	}
+  	return scalar @$mods;
+  }
+  
+  1;
+  __END__
+  
+  =head1 NAME
+  
+  Git::SVN::Editor - commit driver for "git svn set-tree" and dcommit
+  
+  =head1 SYNOPSIS
+  
+  	use Git::SVN::Editor;
+  	use Git::SVN::Ra;
+  
+  	my $ra = Git::SVN::Ra->new($url);
+  	my %opts = (
+  		r => 19,
+  		log => "log message",
+  		ra => $ra,
+  		config => SVN::Core::config_get_config($svn_config_dir),
+  		tree_a => "$commit^",
+  		tree_b => "$commit",
+  		editor_cb => sub { print "Committed r$_[0]\n"; },
+  		mergeinfo => "/branches/foo:1-10",
+  		svn_path => "trunk"
+  	);
+  	Git::SVN::Editor->new(\%opts)->apply_diff or print "No changes\n";
+  
+  	my $re = Git::SVN::Editor::glob2pat("trunk/*");
+  	if ($branchname =~ /$re/) {
+  		print "matched!\n";
+  	}
+  
+  =head1 DESCRIPTION
+  
+  This module is an implementation detail of the "git svn" command.
+  Do not use it unless you are developing git-svn.
+  
+  This module adapts the C<SVN::Delta::Editor> object returned by
+  C<SVN::Delta::get_commit_editor> and drives it to convey the
+  difference between two git tree objects to a remote Subversion
+  repository.
+  
+  The interface will change as git-svn evolves.
+  
+  =head1 DEPENDENCIES
+  
+  Subversion perl bindings,
+  the core L<Carp> module,
+  and git's L<Git> helper module.
+  
+  C<Git::SVN::Editor> has not been tested using callers other than
+  B<git-svn> itself.
+  
+  =head1 SEE ALSO
+  
+  L<SVN::Delta>,
+  L<Git::SVN::Fetcher>.
+  
+  =head1 INCOMPATIBILITIES
+  
+  None reported.
+  
+  =head1 BUGS
+  
+  None.
+GIT_SVN_EDITOR
+
+$fatpacked{"Git/SVN/Fetcher.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT_SVN_FETCHER';
+  package Git::SVN::Fetcher;
+  use vars qw/@ISA $_ignore_regex $_include_regex $_preserve_empty_dirs
+              $_placeholder_filename @deleted_gpath %added_placeholder
+              $repo_id/;
+  use strict;
+  use warnings;
+  use SVN::Delta;
+  use Carp qw/croak/;
+  use File::Basename qw/dirname/;
+  use Git qw/command command_oneline command_noisy command_output_pipe
+             command_input_pipe command_close_pipe
+             command_bidi_pipe command_close_bidi_pipe
+             get_record/;
+  BEGIN {
+  	@ISA = qw(SVN::Delta::Editor);
+  }
+  
+  # file baton members: path, mode_a, mode_b, pool, fh, blob, base
+  sub new {
+  	my ($class, $git_svn, $switch_path) = @_;
+  	my $self = SVN::Delta::Editor->new;
+  	bless $self, $class;
+  	if (exists $git_svn->{last_commit}) {
+  		$self->{c} = $git_svn->{last_commit};
+  		$self->{empty_symlinks} =
+  		                  _mark_empty_symlinks($git_svn, $switch_path);
+  	}
+  
+  	# some options are read globally, but can be overridden locally
+  	# per [svn-remote "..."] section.  Command-line options will *NOT*
+  	# override options set in an [svn-remote "..."] section
+  	$repo_id = $git_svn->{repo_id};
+  	my $k = "svn-remote.$repo_id.ignore-paths";
+  	my $v = eval { command_oneline('config', '--get', $k) };
+  	$self->{ignore_regex} = $v;
+  
+  	$k = "svn-remote.$repo_id.include-paths";
+  	$v = eval { command_oneline('config', '--get', $k) };
+  	$self->{include_regex} = $v;
+  
+  	$k = "svn-remote.$repo_id.preserve-empty-dirs";
+  	$v = eval { command_oneline('config', '--get', '--bool', $k) };
+  	if ($v && $v eq 'true') {
+  		$_preserve_empty_dirs = 1;
+  		$k = "svn-remote.$repo_id.placeholder-filename";
+  		$v = eval { command_oneline('config', '--get', $k) };
+  		$_placeholder_filename = $v;
+  	}
+  
+  	# Load the list of placeholder files added during previous invocations.
+  	$k = "svn-remote.$repo_id.added-placeholder";
+  	$v = eval { command_oneline('config', '--get-all', $k) };
+  	if ($_preserve_empty_dirs && $v) {
+  		# command() prints errors to stderr, so we only call it if
+  		# command_oneline() succeeded.
+  		my @v = command('config', '--get-all', $k);
+  		$added_placeholder{ dirname($_) } = $_ foreach @v;
+  	}
+  
+  	$self->{empty} = {};
+  	$self->{dir_prop} = {};
+  	$self->{file_prop} = {};
+  	$self->{absent_dir} = {};
+  	$self->{absent_file} = {};
+  	require Git::IndexInfo;
+  	$self->{gii} = $git_svn->tmp_index_do(sub { Git::IndexInfo->new });
+  	$self->{pathnameencoding} = Git::config('svn.pathnameencoding');
+  	$self;
+  }
+  
+  # this uses the Ra object, so it must be called before do_{switch,update},
+  # not inside them (when the Git::SVN::Fetcher object is passed) to
+  # do_{switch,update}
+  sub _mark_empty_symlinks {
+  	my ($git_svn, $switch_path) = @_;
+  	my $bool = Git::config_bool('svn.brokenSymlinkWorkaround');
+  	return {} if (!defined($bool)) || (defined($bool) && ! $bool);
+  
+  	my %ret;
+  	my ($rev, $cmt) = $git_svn->last_rev_commit;
+  	return {} unless ($rev && $cmt);
+  
+  	# allow the warning to be printed for each revision we fetch to
+  	# ensure the user sees it.  The user can also disable the workaround
+  	# on the repository even while git svn is running and the next
+  	# revision fetched will skip this expensive function.
+  	my $printed_warning;
+  	chomp(my $empty_blob = `git hash-object -t blob --stdin < /dev/null`);
+  	my ($ls, $ctx) = command_output_pipe(qw/ls-tree -r -z/, $cmt);
+  	my $pfx = defined($switch_path) ? $switch_path : $git_svn->path;
+  	$pfx .= '/' if length($pfx);
+  	while (defined($_ = get_record($ls, "\0"))) {
+  		s/\A100644 blob $empty_blob\t//o or next;
+  		unless ($printed_warning) {
+  			print STDERR "Scanning for empty symlinks, ",
+  			             "this may take a while if you have ",
+  				     "many empty files\n",
+  				     "You may disable this with `",
+  				     "git config svn.brokenSymlinkWorkaround ",
+  				     "false'.\n",
+  				     "This may be done in a different ",
+  				     "terminal without restarting ",
+  				     "git svn\n";
+  			$printed_warning = 1;
+  		}
+  		my $path = $_;
+  		my (undef, $props) =
+  		               $git_svn->ra->get_file($pfx.$path, $rev, undef);
+  		if ($props->{'svn:special'}) {
+  			$ret{$path} = 1;
+  		}
+  	}
+  	command_close_pipe($ls, $ctx);
+  	\%ret;
+  }
+  
+  # returns true if a given path is inside a ".git" directory
+  sub in_dot_git {
+  	$_[0] =~ m{(?:^|/)\.git(?:/|$)};
+  }
+  
+  # return value: 0 -- don't ignore, 1 -- ignore
+  # This will also check whether the path is explicitly included
+  sub is_path_ignored {
+  	my ($self, $path) = @_;
+  	return 1 if in_dot_git($path);
+  	return 1 if defined($self->{ignore_regex}) &&
+  	            $path =~ m!$self->{ignore_regex}!;
+  	return 0 if defined($self->{include_regex}) &&
+  	            $path =~ m!$self->{include_regex}!;
+  	return 0 if defined($_include_regex) &&
+  	            $path =~ m!$_include_regex!;
+  	return 1 if defined($self->{include_regex});
+  	return 1 if defined($_include_regex);
+  	return 0 unless defined($_ignore_regex);
+  	return 1 if $path =~ m!$_ignore_regex!o;
+  	return 0;
+  }
+  
+  sub set_path_strip {
+  	my ($self, $path) = @_;
+  	$self->{path_strip} = qr/^\Q$path\E(\/|$)/ if length $path;
+  }
+  
+  sub open_root {
+  	{ path => '' };
+  }
+  
+  sub open_directory {
+  	my ($self, $path, $pb, $rev) = @_;
+  	{ path => $path };
+  }
+  
+  sub git_path {
+  	my ($self, $path) = @_;
+  	if (my $enc = $self->{pathnameencoding}) {
+  		require Encode;
+  		Encode::from_to($path, 'UTF-8', $enc);
+  	}
+  	if ($self->{path_strip}) {
+  		$path =~ s!$self->{path_strip}!! or
+  		  die "Failed to strip path '$path' ($self->{path_strip})\n";
+  	}
+  	$path;
+  }
+  
+  sub delete_entry {
+  	my ($self, $path, $rev, $pb) = @_;
+  	return undef if $self->is_path_ignored($path);
+  
+  	my $gpath = $self->git_path($path);
+  	return undef if ($gpath eq '');
+  
+  	# remove entire directories.
+  	my ($tree) = (command('ls-tree', '-z', $self->{c}, "./$gpath")
+  	                 =~ /\A040000 tree ([a-f\d]{40})\t\Q$gpath\E\0/);
+  	if ($tree) {
+  		my ($ls, $ctx) = command_output_pipe(qw/ls-tree
+  		                                     -r --name-only -z/,
+  				                     $tree);
+  		while (defined($_ = get_record($ls, "\0"))) {
+  			my $rmpath = "$gpath/$_";
+  			$self->{gii}->remove($rmpath);
+  			print "\tD\t$rmpath\n" unless $::_q;
+  		}
+  		print "\tD\t$gpath/\n" unless $::_q;
+  		command_close_pipe($ls, $ctx);
+  	} else {
+  		$self->{gii}->remove($gpath);
+  		print "\tD\t$gpath\n" unless $::_q;
+  	}
+  	# Don't add to @deleted_gpath if we're deleting a placeholder file.
+  	push @deleted_gpath, $gpath unless $added_placeholder{dirname($path)};
+  	$self->{empty}->{$path} = 0;
+  	undef;
+  }
+  
+  sub open_file {
+  	my ($self, $path, $pb, $rev) = @_;
+  	my ($mode, $blob);
+  
+  	goto out if $self->is_path_ignored($path);
+  
+  	my $gpath = $self->git_path($path);
+  	($mode, $blob) = (command('ls-tree', '-z', $self->{c}, "./$gpath")
+  	                     =~ /\A(\d{6}) blob ([a-f\d]{40})\t\Q$gpath\E\0/);
+  	unless (defined $mode && defined $blob) {
+  		die "$path was not found in commit $self->{c} (r$rev)\n";
+  	}
+  	if ($mode eq '100644' && $self->{empty_symlinks}->{$path}) {
+  		$mode = '120000';
+  	}
+  out:
+  	{ path => $path, mode_a => $mode, mode_b => $mode, blob => $blob,
+  	  pool => SVN::Pool->new, action => 'M' };
+  }
+  
+  sub add_file {
+  	my ($self, $path, $pb, $cp_path, $cp_rev) = @_;
+  	my $mode;
+  
+  	if (!$self->is_path_ignored($path)) {
+  		my ($dir, $file) = ($path =~ m#^(.*?)/?([^/]+)$#);
+  		delete $self->{empty}->{$dir};
+  		$mode = '100644';
+  
+  		if ($added_placeholder{$dir}) {
+  			# Remove our placeholder file, if we created one.
+  			delete_entry($self, $added_placeholder{$dir})
+  				unless $path eq $added_placeholder{$dir};
+  			delete $added_placeholder{$dir}
+  		}
+  	}
+  
+  	{ path => $path, mode_a => $mode, mode_b => $mode,
+  	  pool => SVN::Pool->new, action => 'A' };
+  }
+  
+  sub add_directory {
+  	my ($self, $path, $cp_path, $cp_rev) = @_;
+  	goto out if $self->is_path_ignored($path);
+  	my $gpath = $self->git_path($path);
+  	if ($gpath eq '') {
+  		my ($ls, $ctx) = command_output_pipe(qw/ls-tree
+  		                                     -r --name-only -z/,
+  				                     $self->{c});
+  		while (defined($_ = get_record($ls, "\0"))) {
+  			$self->{gii}->remove($_);
+  			print "\tD\t$_\n" unless $::_q;
+  			push @deleted_gpath, $gpath;
+  		}
+  		command_close_pipe($ls, $ctx);
+  		$self->{empty}->{$path} = 0;
+  	}
+  	my ($dir, $file) = ($path =~ m#^(.*?)/?([^/]+)$#);
+  	delete $self->{empty}->{$dir};
+  	$self->{empty}->{$path} = 1;
+  
+  	if ($added_placeholder{$dir}) {
+  		# Remove our placeholder file, if we created one.
+  		delete_entry($self, $added_placeholder{$dir});
+  		delete $added_placeholder{$dir}
+  	}
+  
+  out:
+  	{ path => $path };
+  }
+  
+  sub change_dir_prop {
+  	my ($self, $db, $prop, $value) = @_;
+  	return undef if $self->is_path_ignored($db->{path});
+  	$self->{dir_prop}->{$db->{path}} ||= {};
+  	$self->{dir_prop}->{$db->{path}}->{$prop} = $value;
+  	undef;
+  }
+  
+  sub absent_directory {
+  	my ($self, $path, $pb) = @_;
+  	return undef if $self->is_path_ignored($path);
+  	$self->{absent_dir}->{$pb->{path}} ||= [];
+  	push @{$self->{absent_dir}->{$pb->{path}}}, $path;
+  	undef;
+  }
+  
+  sub absent_file {
+  	my ($self, $path, $pb) = @_;
+  	return undef if $self->is_path_ignored($path);
+  	$self->{absent_file}->{$pb->{path}} ||= [];
+  	push @{$self->{absent_file}->{$pb->{path}}}, $path;
+  	undef;
+  }
+  
+  sub change_file_prop {
+  	my ($self, $fb, $prop, $value) = @_;
+  	return undef if $self->is_path_ignored($fb->{path});
+  	if ($prop eq 'svn:executable') {
+  		if ($fb->{mode_b} != 120000) {
+  			$fb->{mode_b} = defined $value ? 100755 : 100644;
+  		}
+  	} elsif ($prop eq 'svn:special') {
+  		$fb->{mode_b} = defined $value ? 120000 : 100644;
+  	} else {
+  		$self->{file_prop}->{$fb->{path}} ||= {};
+  		$self->{file_prop}->{$fb->{path}}->{$prop} = $value;
+  	}
+  	undef;
+  }
+  
+  sub apply_textdelta {
+  	my ($self, $fb, $exp) = @_;
+  	return undef if $self->is_path_ignored($fb->{path});
+  	my $suffix = 0;
+  	++$suffix while $::_repository->temp_is_locked("svn_delta_${$}_$suffix");
+  	my $fh = $::_repository->temp_acquire("svn_delta_${$}_$suffix");
+  	# $fh gets auto-closed() by SVN::TxDelta::apply(),
+  	# (but $base does not,) so dup() it for reading in close_file
+  	open my $dup, '<&', $fh or croak $!;
+  	my $base = $::_repository->temp_acquire("git_blob_${$}_$suffix");
+  	# close_file may call temp_acquire on 'svn_hash', but because of the
+  	# call chain, if the temp_acquire call from close_file ends up being the
+  	# call that first creates the 'svn_hash' temp file, then the FileHandle
+  	# that's created as a result will end up in an SVN::Pool that we clear
+  	# in SVN::Ra::gs_fetch_loop_common.  Avoid that by making sure the
+  	# 'svn_hash' FileHandle is already created before close_file is called.
+  	my $tmp_fh = $::_repository->temp_acquire('svn_hash');
+  	$::_repository->temp_release($tmp_fh, 1);
+  
+  	if ($fb->{blob}) {
+  		my ($base_is_link, $size);
+  
+  		if ($fb->{mode_a} eq '120000' &&
+  		    ! $self->{empty_symlinks}->{$fb->{path}}) {
+  			print $base 'link ' or die "print $!\n";
+  			$base_is_link = 1;
+  		}
+  	retry:
+  		$size = $::_repository->cat_blob($fb->{blob}, $base);
+  		die "Failed to read object $fb->{blob}" if ($size < 0);
+  
+  		if (defined $exp) {
+  			seek $base, 0, 0 or croak $!;
+  			my $got = ::md5sum($base);
+  			if ($got ne $exp) {
+  				my $err = "Checksum mismatch: ".
+  				       "$fb->{path} $fb->{blob}\n" .
+  				       "expected: $exp\n" .
+  				       "     got: $got\n";
+  				if ($base_is_link) {
+  					warn $err,
+  					     "Retrying... (possibly ",
+  					     "a bad symlink from SVN)\n";
+  					$::_repository->temp_reset($base);
+  					$base_is_link = 0;
+  					goto retry;
+  				}
+  				die $err;
+  			}
+  		}
+  	}
+  	seek $base, 0, 0 or croak $!;
+  	$fb->{fh} = $fh;
+  	$fb->{base} = $base;
+  	[ SVN::TxDelta::apply($base, $dup, undef, $fb->{path}, $fb->{pool}) ];
+  }
+  
+  sub close_file {
+  	my ($self, $fb, $exp) = @_;
+  	return undef if $self->is_path_ignored($fb->{path});
+  
+  	my $hash;
+  	my $path = $self->git_path($fb->{path});
+  	if (my $fh = $fb->{fh}) {
+  		if (defined $exp) {
+  			seek($fh, 0, 0) or croak $!;
+  			my $got = ::md5sum($fh);
+  			if ($got ne $exp) {
+  				die "Checksum mismatch: $path\n",
+  				    "expected: $exp\n    got: $got\n";
+  			}
+  		}
+  		if ($fb->{mode_b} == 120000) {
+  			sysseek($fh, 0, 0) or croak $!;
+  			my $rd = sysread($fh, my $buf, 5);
+  
+  			if (!defined $rd) {
+  				croak "sysread: $!\n";
+  			} elsif ($rd == 0) {
+  				warn "$path has mode 120000",
+  				     " but it points to nothing\n",
+  				     "converting to an empty file with mode",
+  				     " 100644\n";
+  				$fb->{mode_b} = '100644';
+  			} elsif ($buf ne 'link ') {
+  				warn "$path has mode 120000",
+  				     " but is not a link\n";
+  			} else {
+  				my $tmp_fh = $::_repository->temp_acquire(
+  					'svn_hash');
+  				my $res;
+  				while ($res = sysread($fh, my $str, 1024)) {
+  					my $out = syswrite($tmp_fh, $str, $res);
+  					defined($out) && $out == $res
+  						or croak("write ",
+  							Git::temp_path($tmp_fh),
+  							": $!\n");
+  				}
+  				defined $res or croak $!;
+  
+  				($fh, $tmp_fh) = ($tmp_fh, $fh);
+  				Git::temp_release($tmp_fh, 1);
+  			}
+  		}
+  
+  		$hash = $::_repository->hash_and_insert_object(
+  				Git::temp_path($fh));
+  		$hash =~ /^[a-f\d]{40}$/ or die "not a sha1: $hash\n";
+  
+  		Git::temp_release($fb->{base}, 1);
+  		Git::temp_release($fh, 1);
+  	} else {
+  		$hash = $fb->{blob} or die "no blob information\n";
+  	}
+  	$fb->{pool}->clear;
+  	$self->{gii}->update($fb->{mode_b}, $hash, $path) or croak $!;
+  	print "\t$fb->{action}\t$path\n" if $fb->{action} && ! $::_q;
+  	undef;
+  }
+  
+  sub abort_edit {
+  	my $self = shift;
+  	$self->{nr} = $self->{gii}->{nr};
+  	delete $self->{gii};
+  	$self->SUPER::abort_edit(@_);
+  }
+  
+  sub close_edit {
+  	my $self = shift;
+  
+  	if ($_preserve_empty_dirs) {
+  		my @empty_dirs;
+  
+  		# Any entry flagged as empty that also has an associated
+  		# dir_prop represents a newly created empty directory.
+  		foreach my $i (keys %{$self->{empty}}) {
+  			push @empty_dirs, $i if exists $self->{dir_prop}->{$i};
+  		}
+  
+  		# Search for directories that have become empty due subsequent
+  		# file deletes.
+  		push @empty_dirs, $self->find_empty_directories();
+  
+  		# Finally, add a placeholder file to each empty directory.
+  		$self->add_placeholder_file($_) foreach (@empty_dirs);
+  
+  		$self->stash_placeholder_list();
+  	}
+  
+  	$self->{git_commit_ok} = 1;
+  	$self->{nr} = $self->{gii}->{nr};
+  	delete $self->{gii};
+  	$self->SUPER::close_edit(@_);
+  }
+  
+  sub find_empty_directories {
+  	my ($self) = @_;
+  	my @empty_dirs;
+  	my %dirs = map { dirname($_) => 1 } @deleted_gpath;
+  
+  	foreach my $dir (sort keys %dirs) {
+  		next if $dir eq ".";
+  
+  		# If there have been any additions to this directory, there is
+  		# no reason to check if it is empty.
+  		my $skip_added = 0;
+  		foreach my $t (qw/dir_prop file_prop/) {
+  			foreach my $path (keys %{ $self->{$t} }) {
+  				if (exists $self->{$t}->{dirname($path)}) {
+  					$skip_added = 1;
+  					last;
+  				}
+  			}
+  			last if $skip_added;
+  		}
+  		next if $skip_added;
+  
+  		# Use `git ls-tree` to get the filenames of this directory
+  		# that existed prior to this particular commit.
+  		my $ls = command('ls-tree', '-z', '--name-only',
+  				 $self->{c}, "$dir/");
+  		my %files = map { $_ => 1 } split(/\0/, $ls);
+  
+  		# Remove the filenames that were deleted during this commit.
+  		delete $files{$_} foreach (@deleted_gpath);
+  
+  		# Report the directory if there are no filenames left.
+  		push @empty_dirs, $dir unless (scalar %files);
+  	}
+  	@empty_dirs;
+  }
+  
+  sub add_placeholder_file {
+  	my ($self, $dir) = @_;
+  	my $path = "$dir/$_placeholder_filename";
+  	my $gpath = $self->git_path($path);
+  
+  	my $fh = $::_repository->temp_acquire($gpath);
+  	my $hash = $::_repository->hash_and_insert_object(Git::temp_path($fh));
+  	Git::temp_release($fh, 1);
+  	$self->{gii}->update('100644', $hash, $gpath) or croak $!;
+  
+  	# The directory should no longer be considered empty.
+  	delete $self->{empty}->{$dir} if exists $self->{empty}->{$dir};
+  
+  	# Keep track of any placeholder files we create.
+  	$added_placeholder{$dir} = $path;
+  }
+  
+  sub stash_placeholder_list {
+  	my ($self) = @_;
+  	my $k = "svn-remote.$repo_id.added-placeholder";
+  	my $v = eval { command_oneline('config', '--get-all', $k) };
+  	command_noisy('config', '--unset-all', $k) if $v;
+  	foreach (values %added_placeholder) {
+  		command_noisy('config', '--add', $k, $_);
+  	}
+  }
+  
+  1;
+  __END__
+  
+  =head1 NAME
+  
+  Git::SVN::Fetcher - tree delta consumer for "git svn fetch"
+  
+  =head1 SYNOPSIS
+  
+      use SVN::Core;
+      use SVN::Ra;
+      use Git::SVN;
+      use Git::SVN::Fetcher;
+      use Git;
+  
+      my $gs = Git::SVN->find_by_url($url);
+      my $ra = SVN::Ra->new(url => $url);
+      my $editor = Git::SVN::Fetcher->new($gs);
+      my $reporter = $ra->do_update($SVN::Core::INVALID_REVNUM, '',
+                                    1, $editor);
+      $reporter->set_path('', $old_rev, 0);
+      $reporter->finish_report;
+      my $tree = $gs->tmp_index_do(sub { command_oneline('write-tree') });
+  
+      foreach my $path (keys %{$editor->{dir_prop}) {
+          my $props = $editor->{dir_prop}{$path};
+          foreach my $prop (keys %$props) {
+              print "property $prop at $path changed to $props->{$prop}\n";
+          }
+      }
+      foreach my $path (keys %{$editor->{empty}) {
+          my $action = $editor->{empty}{$path} ? 'added' : 'removed';
+          print "empty directory $path $action\n";
+      }
+      foreach my $path (keys %{$editor->{file_prop}) { ... }
+      foreach my $parent (keys %{$editor->{absent_dir}}) {
+          my @children = @{$editor->{abstent_dir}{$parent}};
+          print "cannot fetch directory $parent/$_: not authorized?\n"
+              foreach @children;
+      }
+      foreach my $parent (keys %{$editor->{absent_file}) { ... }
+  
+  =head1 DESCRIPTION
+  
+  This is a subclass of C<SVN::Delta::Editor>, which means it implements
+  callbacks to act as a consumer of Subversion tree deltas.  This
+  particular implementation of those callbacks is meant to store
+  information about the resulting content which B<git svn fetch> could
+  use to populate new commits and new entries for F<unhandled.log>.
+  More specifically:
+  
+  =over
+  
+  =item * Additions, removals, and modifications of files are propagated
+  to git-svn's index file F<$GIT_DIR/svn/$refname/index> using
+  B<git update-index>.
+  
+  =item * Changes in Subversion path properties are recorded in the
+  C<dir_prop> and C<file_prop> fields (which are hashes).
+  
+  =item * Addition and removal of empty directories are indicated by
+  entries with value 1 and 0 respectively in the C<empty> hash.
+  
+  =item * Paths that are present but cannot be conveyed (presumably due
+  to permissions) are recorded in the C<absent_file> and
+  C<absent_dirs> hashes.  For each key, the corresponding value is
+  a list of paths under that directory that were present but
+  could not be conveyed.
+  
+  =back
+  
+  The interface is unstable.  Do not use this module unless you are
+  developing git-svn.
+  
+  =head1 DEPENDENCIES
+  
+  L<SVN::Delta> from the Subversion perl bindings,
+  the core L<Carp> and L<File::Basename> modules,
+  and git's L<Git> helper module.
+  
+  C<Git::SVN::Fetcher> has not been tested using callers other than
+  B<git-svn> itself.
+  
+  =head1 SEE ALSO
+  
+  L<SVN::Delta>,
+  L<Git::SVN::Editor>.
+  
+  =head1 INCOMPATIBILITIES
+  
+  None reported.
+  
+  =head1 BUGS
+  
+  None.
+GIT_SVN_FETCHER
+
+$fatpacked{"Git/SVN/GlobSpec.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT_SVN_GLOBSPEC';
+  package Git::SVN::GlobSpec;
+  use strict;
+  use warnings;
+  
+  sub new {
+  	my ($class, $glob, $pattern_ok) = @_;
+  	my $re = $glob;
+  	$re =~ s!/+$!!g; # no need for trailing slashes
+  	my (@left, @right, @patterns);
+  	my $state = "left";
+  	my $die_msg = "Only one set of wildcards " .
+  				"(e.g. '*' or '*/*/*') is supported: $glob\n";
+  	for my $part (split(m|/|, $glob)) {
+  		if ($pattern_ok && $part =~ /[{}]/ &&
+  			 $part !~ /^\{[^{}]+\}/) {
+  			die "Invalid pattern in '$glob': $part\n";
+  		}
+  		my $nstars = $part =~ tr/*//;
+  		if ($nstars > 1) {
+  			die "Only one '*' is allowed in a pattern: '$part'\n";
+  		}
+  		if ($part =~ /(.*)\*(.*)/) {
+  			die $die_msg if $state eq "right";
+  			my ($l, $r) = ($1, $2);
+  			$state = "pattern";
+  			my $pat = quotemeta($l) . '[^/]*' . quotemeta($r);
+  			push(@patterns, $pat);
+  		} elsif ($pattern_ok && $part =~ /^\{(.*)\}$/) {
+  			die $die_msg if $state eq "right";
+  			$state = "pattern";
+  			my $p = quotemeta($1);
+  			$p =~ s/\\,/|/g;
+  			push(@patterns, "(?:$p)");
+  		} else {
+  			if ($state eq "left") {
+  				push(@left, $part);
+  			} else {
+  				push(@right, $part);
+  				$state = "right";
+  			}
+  		}
+  	}
+  	my $depth = @patterns;
+  	if ($depth == 0) {
+  		die "One '*' is needed in glob: '$glob'\n";
+  	}
+  	my $left = join('/', @left);
+  	my $right = join('/', @right);
+  	$re = join('/', @patterns);
+  	$re = join('\/',
+  		   grep(length, quotemeta($left),
+                                  "($re)(?=/|\$)",
+                                  quotemeta($right)));
+  	my $left_re = qr/^\/\Q$left\E(\/|$)/;
+  	bless { left => $left, right => $right, left_regex => $left_re,
+  	        regex => qr/$re/, glob => $glob, depth => $depth }, $class;
+  }
+  
+  sub full_path {
+  	my ($self, $path) = @_;
+  	return (length $self->{left} ? "$self->{left}/" : '') .
+  	       $path . (length $self->{right} ? "/$self->{right}" : '');
+  }
+  
+  1;
+GIT_SVN_GLOBSPEC
+
+$fatpacked{"Git/SVN/Log.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT_SVN_LOG';
+  package Git::SVN::Log;
+  use strict;
+  use warnings;
+  use Git::SVN::Utils qw(fatal);
+  use Git qw(command
+             command_oneline
+             command_output_pipe
+             command_close_pipe
+             get_tz_offset);
+  use POSIX qw/strftime/;
+  use constant commit_log_separator => ('-' x 72) . "\n";
+  use vars qw/$TZ $limit $color $pager $non_recursive $verbose $oneline
+              %rusers $show_commit $incremental/;
+  
+  # Option set in git-svn
+  our $_git_format;
+  
+  sub cmt_showable {
+  	my ($c) = @_;
+  	return 1 if defined $c->{r};
+  
+  	# big commit message got truncated by the 16k pretty buffer in rev-list
+  	if ($c->{l} && $c->{l}->[-1] eq "...\n" &&
+  				$c->{a_raw} =~ /\@([a-f\d\-]+)>$/) {
+  		@{$c->{l}} = ();
+  		my @log = command(qw/cat-file commit/, $c->{c});
+  
+  		# shift off the headers
+  		shift @log while ($log[0] ne '');
+  		shift @log;
+  
+  		# TODO: make $c->{l} not have a trailing newline in the future
+  		@{$c->{l}} = map { "$_\n" } grep !/^git-svn-id: /, @log;
+  
+  		(undef, $c->{r}, undef) = ::extract_metadata(
+  				(grep(/^git-svn-id: /, @log))[-1]);
+  	}
+  	return defined $c->{r};
+  }
+  
+  sub log_use_color {
+  	return $color || Git->repository->get_colorbool('color.diff');
+  }
+  
+  sub git_svn_log_cmd {
+  	my ($r_min, $r_max, @args) = @_;
+  	my $head = 'HEAD';
+  	my (@files, @log_opts);
+  	foreach my $x (@args) {
+  		if ($x eq '--' || @files) {
+  			push @files, $x;
+  		} else {
+  			if (::verify_ref("$x^0")) {
+  				$head = $x;
+  			} else {
+  				push @log_opts, $x;
+  			}
+  		}
+  	}
+  
+  	my ($url, $rev, $uuid, $gs) = ::working_head_info($head);
+  
+  	require Git::SVN;
+  	$gs ||= Git::SVN->_new;
+  	my @cmd = (qw/log --abbrev-commit --pretty=raw --default/,
+  	           $gs->refname);
+  	push @cmd, '-r' unless $non_recursive;
+  	push @cmd, qw/--raw --name-status/ if $verbose;
+  	push @cmd, '--color' if log_use_color();
+  	push @cmd, @log_opts;
+  	if (defined $r_max && $r_max == $r_min) {
+  		push @cmd, '--max-count=1';
+  		if (my $c = $gs->rev_map_get($r_max)) {
+  			push @cmd, $c;
+  		}
+  	} elsif (defined $r_max) {
+  		if ($r_max < $r_min) {
+  			($r_min, $r_max) = ($r_max, $r_min);
+  		}
+  		my (undef, $c_max) = $gs->find_rev_before($r_max, 1, $r_min);
+  		my (undef, $c_min) = $gs->find_rev_after($r_min, 1, $r_max);
+  		# If there are no commits in the range, both $c_max and $c_min
+  		# will be undefined.  If there is at least 1 commit in the
+  		# range, both will be defined.
+  		return () if !defined $c_min || !defined $c_max;
+  		if ($c_min eq $c_max) {
+  			push @cmd, '--max-count=1', $c_min;
+  		} else {
+  			push @cmd, '--boundary', "$c_min..$c_max";
+  		}
+  	}
+  	return (@cmd, @files);
+  }
+  
+  # adapted from pager.c
+  sub config_pager {
+  	if (! -t *STDOUT) {
+  		$ENV{GIT_PAGER_IN_USE} = 'false';
+  		$pager = undef;
+  		return;
+  	}
+  	chomp($pager = command_oneline(qw(var GIT_PAGER)));
+  	if ($pager eq 'cat') {
+  		$pager = undef;
+  	}
+  	$ENV{GIT_PAGER_IN_USE} = defined($pager);
+  }
+  
+  sub run_pager {
+  	return unless defined $pager;
+  	pipe my ($rfd, $wfd) or return;
+  	defined(my $pid = fork) or fatal "Can't fork: $!";
+  	if (!$pid) {
+  		open STDOUT, '>&', $wfd or
+  		                     fatal "Can't redirect to stdout: $!";
+  		return;
+  	}
+  	open STDIN, '<&', $rfd or fatal "Can't redirect stdin: $!";
+  	$ENV{LESS} ||= 'FRX';
+  	$ENV{LV} ||= '-c';
+  	exec $pager or fatal "Can't run pager: $! ($pager)";
+  }
+  
+  sub format_svn_date {
+  	my $t = shift || time;
+  	require Git::SVN;
+  	my $gmoff = get_tz_offset($t);
+  	return strftime("%Y-%m-%d %H:%M:%S $gmoff (%a, %d %b %Y)", localtime($t));
+  }
+  
+  sub parse_git_date {
+  	my ($t, $tz) = @_;
+  	# Date::Parse isn't in the standard Perl distro :(
+  	if ($tz =~ s/^\+//) {
+  		$t += tz_to_s_offset($tz);
+  	} elsif ($tz =~ s/^\-//) {
+  		$t -= tz_to_s_offset($tz);
+  	}
+  	return $t;
+  }
+  
+  sub set_local_timezone {
+  	if (defined $TZ) {
+  		$ENV{TZ} = $TZ;
+  	} else {
+  		delete $ENV{TZ};
+  	}
+  }
+  
+  sub tz_to_s_offset {
+  	my ($tz) = @_;
+  	$tz =~ s/(\d\d)$//;
+  	return ($1 * 60) + ($tz * 3600);
+  }
+  
+  sub get_author_info {
+  	my ($dest, $author, $t, $tz) = @_;
+  	$author =~ s/(?:^\s*|\s*$)//g;
+  	$dest->{a_raw} = $author;
+  	my $au;
+  	if ($::_authors) {
+  		$au = $rusers{$author} || undef;
+  	}
+  	if (!$au) {
+  		($au) = ($author =~ /<([^>]+)\@[^>]+>$/);
+  	}
+  	$dest->{t} = $t;
+  	$dest->{tz} = $tz;
+  	$dest->{a} = $au;
+  	$dest->{t_utc} = parse_git_date($t, $tz);
+  }
+  
+  sub process_commit {
+  	my ($c, $r_min, $r_max, $defer) = @_;
+  	if (defined $r_min && defined $r_max) {
+  		if ($r_min == $c->{r} && $r_min == $r_max) {
+  			show_commit($c);
+  			return 0;
+  		}
+  		return 1 if $r_min == $r_max;
+  		if ($r_min < $r_max) {
+  			# we need to reverse the print order
+  			return 0 if (defined $limit && --$limit < 0);
+  			push @$defer, $c;
+  			return 1;
+  		}
+  		if ($r_min != $r_max) {
+  			return 1 if ($r_min < $c->{r});
+  			return 1 if ($r_max > $c->{r});
+  		}
+  	}
+  	return 0 if (defined $limit && --$limit < 0);
+  	show_commit($c);
+  	return 1;
+  }
+  
+  my $l_fmt;
+  sub show_commit {
+  	my $c = shift;
+  	if ($oneline) {
+  		my $x = "\n";
+  		if (my $l = $c->{l}) {
+  			while ($l->[0] =~ /^\s*$/) { shift @$l }
+  			$x = $l->[0];
+  		}
+  		$l_fmt ||= 'A' . length($c->{r});
+  		print 'r',pack($l_fmt, $c->{r}),' | ';
+  		print "$c->{c} | " if $show_commit;
+  		print $x;
+  	} else {
+  		show_commit_normal($c);
+  	}
+  }
+  
+  sub show_commit_changed_paths {
+  	my ($c) = @_;
+  	return unless $c->{changed};
+  	print "Changed paths:\n", @{$c->{changed}};
+  }
+  
+  sub show_commit_normal {
+  	my ($c) = @_;
+  	print commit_log_separator, "r$c->{r} | ";
+  	print "$c->{c} | " if $show_commit;
+  	print "$c->{a} | ", format_svn_date($c->{t_utc}), ' | ';
+  	my $nr_line = 0;
+  
+  	if (my $l = $c->{l}) {
+  		while ($l->[$#$l] eq "\n" && $#$l > 0
+  		                          && $l->[($#$l - 1)] eq "\n") {
+  			pop @$l;
+  		}
+  		$nr_line = scalar @$l;
+  		if (!$nr_line) {
+  			print "1 line\n\n\n";
+  		} else {
+  			if ($nr_line == 1) {
+  				$nr_line = '1 line';
+  			} else {
+  				$nr_line .= ' lines';
+  			}
+  			print $nr_line, "\n";
+  			show_commit_changed_paths($c);
+  			print "\n";
+  			print $_ foreach @$l;
+  		}
+  	} else {
+  		print "1 line\n";
+  		show_commit_changed_paths($c);
+  		print "\n";
+  
+  	}
+  	foreach my $x (qw/raw stat diff/) {
+  		if ($c->{$x}) {
+  			print "\n";
+  			print $_ foreach @{$c->{$x}}
+  		}
+  	}
+  }
+  
+  sub cmd_show_log {
+  	my (@args) = @_;
+  	my ($r_min, $r_max);
+  	my $r_last = -1; # prevent dupes
+  	set_local_timezone();
+  	if (defined $::_revision) {
+  		if ($::_revision =~ /^(\d+):(\d+)$/) {
+  			($r_min, $r_max) = ($1, $2);
+  		} elsif ($::_revision =~ /^\d+$/) {
+  			$r_min = $r_max = $::_revision;
+  		} else {
+  			fatal "-r$::_revision is not supported, use ",
+  				"standard 'git log' arguments instead";
+  		}
+  	}
+  
+  	config_pager();
+  	@args = git_svn_log_cmd($r_min, $r_max, @args);
+  	if (!@args) {
+  		print commit_log_separator unless $incremental || $oneline;
+  		return;
+  	}
+  	my $log = command_output_pipe(@args);
+  	run_pager();
+  	my (@k, $c, $d, $stat);
+  	my $esc_color = qr/(?:\033\[(?:(?:\d+;)*\d*)?m)*/;
+  	while (<$log>) {
+  		if (/^${esc_color}commit (?:- )?($::sha1_short)/o) {
+  			my $cmt = $1;
+  			if ($c && cmt_showable($c) && $c->{r} != $r_last) {
+  				$r_last = $c->{r};
+  				process_commit($c, $r_min, $r_max, \@k) or
+  								goto out;
+  			}
+  			$d = undef;
+  			$c = { c => $cmt };
+  		} elsif (/^${esc_color}author (.+) (\d+) ([\-\+]?\d+)$/o) {
+  			get_author_info($c, $1, $2, $3);
+  		} elsif (/^${esc_color}(?:tree|parent|committer) /o) {
+  			# ignore
+  		} elsif (/^${esc_color}:\d{6} \d{6} $::sha1_short/o) {
+  			push @{$c->{raw}}, $_;
+  		} elsif (/^${esc_color}[ACRMDT]\t/) {
+  			# we could add $SVN->{svn_path} here, but that requires
+  			# remote access at the moment (repo_path_split)...
+  			s#^(${esc_color})([ACRMDT])\t#$1   $2 #o;
+  			push @{$c->{changed}}, $_;
+  		} elsif (/^${esc_color}diff /o) {
+  			$d = 1;
+  			push @{$c->{diff}}, $_;
+  		} elsif ($d) {
+  			push @{$c->{diff}}, $_;
+  		} elsif (/^\ .+\ \|\s*\d+\ $esc_color[\+\-]*
+  		          $esc_color*[\+\-]*$esc_color$/x) {
+  			$stat = 1;
+  			push @{$c->{stat}}, $_;
+  		} elsif ($stat && /^ \d+ files changed, \d+ insertions/) {
+  			push @{$c->{stat}}, $_;
+  			$stat = undef;
+  		} elsif (/^${esc_color}    (git-svn-id:.+)$/o) {
+  			($c->{url}, $c->{r}, undef) = ::extract_metadata($1);
+  		} elsif (s/^${esc_color}    //o) {
+  			push @{$c->{l}}, $_;
+  		}
+  	}
+  	if ($c && defined $c->{r} && $c->{r} != $r_last) {
+  		$r_last = $c->{r};
+  		process_commit($c, $r_min, $r_max, \@k);
+  	}
+  	if (@k) {
+  		($r_min, $r_max) = ($r_max, $r_min);
+  		process_commit($_, $r_min, $r_max) foreach reverse @k;
+  	}
+  out:
+  	close $log;
+  	print commit_log_separator unless $incremental || $oneline;
+  }
+  
+  sub cmd_blame {
+  	my $path = pop;
+  
+  	config_pager();
+  	run_pager();
+  
+  	my ($fh, $ctx, $rev);
+  
+  	if ($_git_format) {
+  		($fh, $ctx) = command_output_pipe('blame', @_, $path);
+  		while (my $line = <$fh>) {
+  			if ($line =~ /^\^?([[:xdigit:]]+)\s/) {
+  				# Uncommitted edits show up as a rev ID of
+  				# all zeros, which we can't look up with
+  				# cmt_metadata
+  				if ($1 !~ /^0+$/) {
+  					(undef, $rev, undef) =
+  						::cmt_metadata($1);
+  					$rev = '0' if (!$rev);
+  				} else {
+  					$rev = '0';
+  				}
+  				$rev = sprintf('%-10s', $rev);
+  				$line =~ s/^\^?[[:xdigit:]]+(\s)/$rev$1/;
+  			}
+  			print $line;
+  		}
+  	} else {
+  		($fh, $ctx) = command_output_pipe('blame', '-p', @_, 'HEAD',
+  						  '--', $path);
+  		my ($sha1);
+  		my %authors;
+  		my @buffer;
+  		my %dsha; #distinct sha keys
+  
+  		while (my $line = <$fh>) {
+  			push @buffer, $line;
+  			if ($line =~ /^([[:xdigit:]]{40})\s\d+\s\d+/) {
+  				$dsha{$1} = 1;
+  			}
+  		}
+  
+  		my $s2r = ::cmt_sha2rev_batch([keys %dsha]);
+  
+  		foreach my $line (@buffer) {
+  			if ($line =~ /^([[:xdigit:]]{40})\s\d+\s\d+/) {
+  				$rev = $s2r->{$1};
+  				$rev = '0' if (!$rev)
+  			}
+  			elsif ($line =~ /^author (.*)/) {
+  				$authors{$rev} = $1;
+  				$authors{$rev} =~ s/\s/_/g;
+  			}
+  			elsif ($line =~ /^\t(.*)$/) {
+  				printf("%6s %10s %s\n", $rev, $authors{$rev}, $1);
+  			}
+  		}
+  	}
+  	command_close_pipe($fh, $ctx);
+  }
+  
+  1;
+GIT_SVN_LOG
+
+$fatpacked{"Git/SVN/Memoize/YAML.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT_SVN_MEMOIZE_YAML';
+  package Git::SVN::Memoize::YAML;
+  use warnings;
+  use strict;
+  use YAML::Any ();
+  
+  # based on Memoize::Storable.
+  
+  sub TIEHASH {
+  	my $package = shift;
+  	my $filename = shift;
+  	my $truehash = (-e $filename) ? YAML::Any::LoadFile($filename) : {};
+  	my $self = {FILENAME => $filename, H => $truehash};
+  	bless $self => $package;
+  }
+  
+  sub STORE {
+  	my $self = shift;
+  	$self->{H}{$_[0]} = $_[1];
+  }
+  
+  sub FETCH {
+  	my $self = shift;
+  	$self->{H}{$_[0]};
+  }
+  
+  sub EXISTS {
+  	my $self = shift;
+  	exists $self->{H}{$_[0]};
+  }
+  
+  sub DESTROY {
+  	my $self = shift;
+  	YAML::Any::DumpFile($self->{FILENAME}, $self->{H});
+  }
+  
+  sub SCALAR {
+  	my $self = shift;
+  	scalar(%{$self->{H}});
+  }
+  
+  sub FIRSTKEY {
+  	'Fake hash from Git::SVN::Memoize::YAML';
+  }
+  
+  sub NEXTKEY {
+  	undef;
+  }
+  
+  1;
+  __END__
+  
+  =head1 NAME
+  
+  Git::SVN::Memoize::YAML - store Memoized data in YAML format
+  
+  =head1 SYNOPSIS
+  
+      use Memoize;
+      use Git::SVN::Memoize::YAML;
+  
+      tie my %cache => 'Git::SVN::Memoize::YAML', $filename;
+      memoize('slow_function', SCALAR_CACHE => [HASH => \%cache]);
+      slow_function(arguments);
+  
+  =head1 DESCRIPTION
+  
+  This module provides a class that can be used to tie a hash to a
+  YAML file.  The file is read when the hash is initialized and
+  rewritten when the hash is destroyed.
+  
+  The intent is to allow L<Memoize> to back its cache with a file in
+  YAML format, just like L<Memoize::Storable> allows L<Memoize> to
+  back its cache with a file in Storable format.  Unlike the Storable
+  format, the YAML format is platform-independent and fairly stable.
+  
+  Carps on error.
+  
+  =head1 DIAGNOSTICS
+  
+  See L<YAML::Any>.
+  
+  =head1 DEPENDENCIES
+  
+  L<YAML::Any> from CPAN.
+  
+  =head1 INCOMPATIBILITIES
+  
+  None reported.
+  
+  =head1 BUGS
+  
+  The entire cache is read into a Perl hash when loading the file,
+  so this is not very scalable.
+GIT_SVN_MEMOIZE_YAML
+
+$fatpacked{"Git/SVN/Migration.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT_SVN_MIGRATION';
+  package Git::SVN::Migration;
+  # these version numbers do NOT correspond to actual version numbers
+  # of git or git-svn.  They are just relative.
+  #
+  # v0 layout: .git/$id/info/url, refs/heads/$id-HEAD
+  #
+  # v1 layout: .git/$id/info/url, refs/remotes/$id
+  #
+  # v2 layout: .git/svn/$id/info/url, refs/remotes/$id
+  #
+  # v3 layout: .git/svn/$id, refs/remotes/$id
+  #            - info/url may remain for backwards compatibility
+  #            - this is what we migrate up to this layout automatically,
+  #            - this will be used by git svn init on single branches
+  # v3.1 layout (auto migrated):
+  #            - .rev_db => .rev_db.$UUID, .rev_db will remain as a symlink
+  #              for backwards compatibility
+  #
+  # v4 layout: .git/svn/$repo_id/$id, refs/remotes/$repo_id/$id
+  #            - this is only created for newly multi-init-ed
+  #              repositories.  Similar in spirit to the
+  #              --use-separate-remotes option in git-clone (now default)
+  #            - we do not automatically migrate to this (following
+  #              the example set by core git)
+  #
+  # v5 layout: .rev_db.$UUID => .rev_map.$UUID
+  #            - newer, more-efficient format that uses 24-bytes per record
+  #              with no filler space.
+  #            - use xxd -c24 < .rev_map.$UUID to view and debug
+  #            - This is a one-way migration, repositories updated to the
+  #              new format will not be able to use old git-svn without
+  #              rebuilding the .rev_db.  Rebuilding the rev_db is not
+  #              possible if noMetadata or useSvmProps are set; but should
+  #              be no problem for users that use the (sensible) defaults.
+  use strict;
+  use warnings;
+  use Carp qw/croak/;
+  use File::Path qw/mkpath/;
+  use File::Basename qw/dirname basename/;
+  
+  our $_minimize;
+  use Git qw(
+  	command
+  	command_noisy
+  	command_output_pipe
+  	command_close_pipe
+  	command_oneline
+  );
+  use Git::SVN;
+  
+  sub migrate_from_v0 {
+  	my $git_dir = $ENV{GIT_DIR};
+  	return undef unless -d $git_dir;
+  	my ($fh, $ctx) = command_output_pipe(qw/rev-parse --symbolic --all/);
+  	my $migrated = 0;
+  	while (<$fh>) {
+  		chomp;
+  		my ($id, $orig_ref) = ($_, $_);
+  		next unless $id =~ s#^refs/heads/(.+)-HEAD$#$1#;
+  		my $info_url = command_oneline(qw(rev-parse --git-path),
+  						"$id/info/url");
+  		next unless -f $info_url;
+  		my $new_ref = "refs/remotes/$id";
+  		if (::verify_ref("$new_ref^0")) {
+  			print STDERR "W: $orig_ref is probably an old ",
+  			             "branch used by an ancient version of ",
+  				     "git-svn.\n",
+  				     "However, $new_ref also exists.\n",
+  				     "We will not be able ",
+  				     "to use this branch until this ",
+  				     "ambiguity is resolved.\n";
+  			next;
+  		}
+  		print STDERR "Migrating from v0 layout...\n" if !$migrated;
+  		print STDERR "Renaming ref: $orig_ref => $new_ref\n";
+  		command_noisy('update-ref', $new_ref, $orig_ref);
+  		command_noisy('update-ref', '-d', $orig_ref, $orig_ref);
+  		$migrated++;
+  	}
+  	command_close_pipe($fh, $ctx);
+  	print STDERR "Done migrating from v0 layout...\n" if $migrated;
+  	$migrated;
+  }
+  
+  sub migrate_from_v1 {
+  	my $git_dir = $ENV{GIT_DIR};
+  	my $migrated = 0;
+  	return $migrated unless -d $git_dir;
+  	my $svn_dir = Git::SVN::svn_dir();
+  
+  	# just in case somebody used 'svn' as their $id at some point...
+  	return $migrated if -d $svn_dir && ! -f "$svn_dir/info/url";
+  
+  	print STDERR "Migrating from a git-svn v1 layout...\n";
+  	mkpath([$svn_dir]);
+  	print STDERR "Data from a previous version of git-svn exists, but\n\t",
+  	             "$svn_dir\n\t(required for this version ",
+  	             "($::VERSION) of git-svn) does not exist.\n";
+  	my ($fh, $ctx) = command_output_pipe(qw/rev-parse --symbolic --all/);
+  	while (<$fh>) {
+  		my $x = $_;
+  		next unless $x =~ s#^refs/remotes/##;
+  		chomp $x;
+  		my $info_url = command_oneline(qw(rev-parse --git-path),
+  						"$x/info/url");
+  		next unless -f $info_url;
+  		my $u = eval { ::file_to_s($info_url) };
+  		next unless $u;
+  		my $dn = dirname("$svn_dir/$x");
+  		mkpath([$dn]) unless -d $dn;
+  		if ($x eq 'svn') { # they used 'svn' as GIT_SVN_ID:
+  			mkpath(["$svn_dir/svn"]);
+  			print STDERR " - $git_dir/$x/info => ",
+  			                "$svn_dir/$x/info\n";
+  			rename "$git_dir/$x/info", "$svn_dir/$x/info" or
+  			       croak "$!: $x";
+  			# don't worry too much about these, they probably
+  			# don't exist with repos this old (save for index,
+  			# and we can easily regenerate that)
+  			foreach my $f (qw/unhandled.log index .rev_db/) {
+  				rename "$git_dir/$x/$f", "$svn_dir/$x/$f";
+  			}
+  		} else {
+  			print STDERR " - $git_dir/$x => $svn_dir/$x\n";
+  			rename "$git_dir/$x", "$svn_dir/$x" or croak "$!: $x";
+  		}
+  		$migrated++;
+  	}
+  	command_close_pipe($fh, $ctx);
+  	print STDERR "Done migrating from a git-svn v1 layout\n";
+  	$migrated;
+  }
+  
+  sub read_old_urls {
+  	my ($l_map, $pfx, $path) = @_;
+  	my @dir;
+  	foreach (<$path/*>) {
+  		if (-r "$_/info/url") {
+  			$pfx .= '/' if $pfx && $pfx !~ m!/$!;
+  			my $ref_id = $pfx . basename $_;
+  			my $url = ::file_to_s("$_/info/url");
+  			$l_map->{$ref_id} = $url;
+  		} elsif (-d $_) {
+  			push @dir, $_;
+  		}
+  	}
+  	my $svn_dir = Git::SVN::svn_dir();
+  	foreach (@dir) {
+  		my $x = $_;
+  		$x =~ s!^\Q$svn_dir\E/!!o;
+  		read_old_urls($l_map, $x, $_);
+  	}
+  }
+  
+  sub migrate_from_v2 {
+  	my @cfg = command(qw/config -l/);
+  	return if grep /^svn-remote\..+\.url=/, @cfg;
+  	my %l_map;
+  	read_old_urls(\%l_map, '', Git::SVN::svn_dir());
+  	my $migrated = 0;
+  
+  	require Git::SVN;
+  	foreach my $ref_id (sort keys %l_map) {
+  		eval { Git::SVN->init($l_map{$ref_id}, '', undef, $ref_id) };
+  		if ($@) {
+  			Git::SVN->init($l_map{$ref_id}, '', $ref_id, $ref_id);
+  		}
+  		$migrated++;
+  	}
+  	$migrated;
+  }
+  
+  sub minimize_connections {
+  	require Git::SVN;
+  	require Git::SVN::Ra;
+  
+  	my $r = Git::SVN::read_all_remotes();
+  	my $new_urls = {};
+  	my $root_repos = {};
+  	foreach my $repo_id (keys %$r) {
+  		my $url = $r->{$repo_id}->{url} or next;
+  		my $fetch = $r->{$repo_id}->{fetch} or next;
+  		my $ra = Git::SVN::Ra->new($url);
+  
+  		# skip existing cases where we already connect to the root
+  		if (($ra->url eq $ra->{repos_root}) ||
+  		    ($ra->{repos_root} eq $repo_id)) {
+  			$root_repos->{$ra->url} = $repo_id;
+  			next;
+  		}
+  
+  		my $root_ra = Git::SVN::Ra->new($ra->{repos_root});
+  		my $root_path = $ra->url;
+  		$root_path =~ s#^\Q$ra->{repos_root}\E(/|$)##;
+  		foreach my $path (keys %$fetch) {
+  			my $ref_id = $fetch->{$path};
+  			my $gs = Git::SVN->new($ref_id, $repo_id, $path);
+  
+  			# make sure we can read when connecting to
+  			# a higher level of a repository
+  			my ($last_rev, undef) = $gs->last_rev_commit;
+  			if (!defined $last_rev) {
+  				$last_rev = eval {
+  					$root_ra->get_latest_revnum;
+  				};
+  				next if $@;
+  			}
+  			my $new = $root_path;
+  			$new .= length $path ? "/$path" : '';
+  			eval {
+  				$root_ra->get_log([$new], $last_rev, $last_rev,
+  			                          0, 0, 1, sub { });
+  			};
+  			next if $@;
+  			$new_urls->{$ra->{repos_root}}->{$new} =
+  			        { ref_id => $ref_id,
+  				  old_repo_id => $repo_id,
+  				  old_path => $path };
+  		}
+  	}
+  
+  	my @emptied;
+  	foreach my $url (keys %$new_urls) {
+  		# see if we can re-use an existing [svn-remote "repo_id"]
+  		# instead of creating a(n ugly) new section:
+  		my $repo_id = $root_repos->{$url} || $url;
+  
+  		my $fetch = $new_urls->{$url};
+  		foreach my $path (keys %$fetch) {
+  			my $x = $fetch->{$path};
+  			Git::SVN->init($url, $path, $repo_id, $x->{ref_id});
+  			my $pfx = "svn-remote.$x->{old_repo_id}";
+  
+  			my $old_fetch = quotemeta("$x->{old_path}:".
+  			                          "$x->{ref_id}");
+  			command_noisy(qw/config --unset/,
+  			              "$pfx.fetch", '^'. $old_fetch . '$');
+  			delete $r->{$x->{old_repo_id}}->
+  			       {fetch}->{$x->{old_path}};
+  			if (!keys %{$r->{$x->{old_repo_id}}->{fetch}}) {
+  				command_noisy(qw/config --unset/,
+  				              "$pfx.url");
+  				push @emptied, $x->{old_repo_id}
+  			}
+  		}
+  	}
+  	if (@emptied) {
+  		my $file = $ENV{GIT_CONFIG} ||
+  			command_oneline(qw(rev-parse --git-path config));
+  		print STDERR <<EOF;
+  The following [svn-remote] sections in your config file ($file) are empty
+  and can be safely removed:
+  EOF
+  		print STDERR "[svn-remote \"$_\"]\n" foreach @emptied;
+  	}
+  }
+  
+  sub migration_check {
+  	migrate_from_v0();
+  	migrate_from_v1();
+  	migrate_from_v2();
+  	minimize_connections() if $_minimize;
+  }
+  
+  1;
+GIT_SVN_MIGRATION
+
+$fatpacked{"Git/SVN/Prompt.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT_SVN_PROMPT';
+  package Git::SVN::Prompt;
+  use strict;
+  use warnings;
+  require SVN::Core;
+  use vars qw/$_no_auth_cache $_username/;
+  
+  sub simple {
+  	my ($cred, $realm, $default_username, $may_save, $pool) = @_;
+  	$may_save = undef if $_no_auth_cache;
+  	$default_username = $_username if defined $_username;
+  	if (defined $default_username && length $default_username) {
+  		if (defined $realm && length $realm) {
+  			print STDERR "Authentication realm: $realm\n";
+  			STDERR->flush;
+  		}
+  		$cred->username($default_username);
+  	} else {
+  		username($cred, $realm, $may_save, $pool);
+  	}
+  	$cred->password(_read_password("Password for '" .
+  	                               $cred->username . "': ", $realm));
+  	$cred->may_save($may_save);
+  	$SVN::_Core::SVN_NO_ERROR;
+  }
+  
+  sub ssl_server_trust {
+  	my ($cred, $realm, $failures, $cert_info, $may_save, $pool) = @_;
+  	$may_save = undef if $_no_auth_cache;
+  	print STDERR "Error validating server certificate for '$realm':\n";
+  	{
+  		no warnings 'once';
+  		# All variables SVN::Auth::SSL::* are used only once,
+  		# so we're shutting up Perl warnings about this.
+  		if ($failures & $SVN::Auth::SSL::UNKNOWNCA) {
+  			print STDERR " - The certificate is not issued ",
+  			    "by a trusted authority. Use the\n",
+  			    "   fingerprint to validate ",
+  			    "the certificate manually!\n";
+  		}
+  		if ($failures & $SVN::Auth::SSL::CNMISMATCH) {
+  			print STDERR " - The certificate hostname ",
+  			    "does not match.\n";
+  		}
+  		if ($failures & $SVN::Auth::SSL::NOTYETVALID) {
+  			print STDERR " - The certificate is not yet valid.\n";
+  		}
+  		if ($failures & $SVN::Auth::SSL::EXPIRED) {
+  			print STDERR " - The certificate has expired.\n";
+  		}
+  		if ($failures & $SVN::Auth::SSL::OTHER) {
+  			print STDERR " - The certificate has ",
+  			    "an unknown error.\n";
+  		}
+  	} # no warnings 'once'
+  	printf STDERR
+  	        "Certificate information:\n".
+  	        " - Hostname: %s\n".
+  	        " - Valid: from %s until %s\n".
+  	        " - Issuer: %s\n".
+  	        " - Fingerprint: %s\n",
+  	        map $cert_info->$_, qw(hostname valid_from valid_until
+  	                               issuer_dname fingerprint);
+  	my $choice;
+  prompt:
+  	my $options = $may_save ?
+  	      "(R)eject, accept (t)emporarily or accept (p)ermanently? " :
+  	      "(R)eject or accept (t)emporarily? ";
+  	STDERR->flush;
+  	$choice = lc(substr(Git::prompt("Certificate problem.\n" . $options) || 'R', 0, 1));
+  	if ($choice eq 't') {
+  		$cred->may_save(undef);
+  	} elsif ($choice eq 'r') {
+  		return -1;
+  	} elsif ($may_save && $choice eq 'p') {
+  		$cred->may_save($may_save);
+  	} else {
+  		goto prompt;
+  	}
+  	$cred->accepted_failures($failures);
+  	$SVN::_Core::SVN_NO_ERROR;
+  }
+  
+  sub ssl_client_cert {
+  	my ($cred, $realm, $may_save, $pool) = @_;
+  	$may_save = undef if $_no_auth_cache;
+  	print STDERR "Client certificate filename: ";
+  	STDERR->flush;
+  	chomp(my $filename = <STDIN>);
+  	$cred->cert_file($filename);
+  	$cred->may_save($may_save);
+  	$SVN::_Core::SVN_NO_ERROR;
+  }
+  
+  sub ssl_client_cert_pw {
+  	my ($cred, $realm, $may_save, $pool) = @_;
+  	$may_save = undef if $_no_auth_cache;
+  	$cred->password(_read_password("Password: ", $realm));
+  	$cred->may_save($may_save);
+  	$SVN::_Core::SVN_NO_ERROR;
+  }
+  
+  sub username {
+  	my ($cred, $realm, $may_save, $pool) = @_;
+  	$may_save = undef if $_no_auth_cache;
+  	if (defined $realm && length $realm) {
+  		print STDERR "Authentication realm: $realm\n";
+  	}
+  	my $username;
+  	if (defined $_username) {
+  		$username = $_username;
+  	} else {
+  		$username = Git::prompt("Username: ");
+  	}
+  	$cred->username($username);
+  	$cred->may_save($may_save);
+  	$SVN::_Core::SVN_NO_ERROR;
+  }
+  
+  sub _read_password {
+  	my ($prompt, $realm) = @_;
+  	my $password = Git::prompt($prompt, 1);
+  	$password;
+  }
+  
+  1;
+  __END__
+  
+  =head1 NAME
+  
+  Git::SVN::Prompt - authentication callbacks for git-svn
+  
+  =head1 SYNOPSIS
+  
+      use Git::SVN::Prompt qw(simple ssl_client_cert ssl_client_cert_pw
+                              ssl_server_trust username);
+      use SVN::Client ();
+  
+      my $cached_simple = SVN::Client::get_simple_provider();
+      my $git_simple = SVN::Client::get_simple_prompt_provider(\&simple, 2);
+      my $cached_ssl = SVN::Client::get_ssl_server_trust_file_provider();
+      my $git_ssl = SVN::Client::get_ssl_server_trust_prompt_provider(
+          \&ssl_server_trust);
+      my $cached_cert = SVN::Client::get_ssl_client_cert_file_provider();
+      my $git_cert = SVN::Client::get_ssl_client_cert_prompt_provider(
+          \&ssl_client_cert, 2);
+      my $cached_cert_pw = SVN::Client::get_ssl_client_cert_pw_file_provider();
+      my $git_cert_pw = SVN::Client::get_ssl_client_cert_pw_prompt_provider(
+          \&ssl_client_cert_pw, 2);
+      my $cached_username = SVN::Client::get_username_provider();
+      my $git_username = SVN::Client::get_username_prompt_provider(
+          \&username, 2);
+  
+      my $ctx = new SVN::Client(
+          auth => [
+              $cached_simple, $git_simple,
+              $cached_ssl, $git_ssl,
+              $cached_cert, $git_cert,
+              $cached_cert_pw, $git_cert_pw,
+              $cached_username, $git_username
+          ]);
+  
+  =head1 DESCRIPTION
+  
+  This module is an implementation detail of the "git svn" command.
+  It implements git-svn's authentication policy.  Do not use it unless
+  you are developing git-svn.
+  
+  The interface will change as git-svn evolves.
+  
+  =head1 DEPENDENCIES
+  
+  L<SVN::Core>.
+  
+  =head1 SEE ALSO
+  
+  L<SVN::Client>.
+  
+  =head1 INCOMPATIBILITIES
+  
+  None reported.
+  
+  =head1 BUGS
+  
+  None.
+GIT_SVN_PROMPT
+
+$fatpacked{"Git/SVN/Ra.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT_SVN_RA';
+  package Git::SVN::Ra;
+  use vars qw/@ISA $config_dir $_ignore_refs_regex $_log_window_size/;
+  use strict;
+  use warnings;
+  use Memoize;
+  use Git::SVN::Utils qw(
+  	canonicalize_url
+  	canonicalize_path
+  	add_path_to_url
+  );
+  
+  use SVN::Ra;
+  BEGIN {
+  	@ISA = qw(SVN::Ra);
+  }
+  
+  my ($ra_invalid, $can_do_switch, %ignored_err, $RA);
+  
+  BEGIN {
+  	# enforce temporary pool usage for some simple functions
+  	no strict 'refs';
+  	for my $f (qw/rev_proplist get_latest_revnum get_uuid get_repos_root
+  	              get_file/) {
+  		my $SUPER = "SUPER::$f";
+  		*$f = sub {
+  			my $self = shift;
+  			my $pool = SVN::Pool->new;
+  			my @ret = $self->$SUPER(@_,$pool);
+  			$pool->clear;
+  			wantarray ? @ret : $ret[0];
+  		};
+  	}
+  }
+  
+  # serf has a bug that leads to a coredump upon termination if the
+  # remote access object is left around (not fixed yet in serf 1.3.1).
+  # Explicitly free it to work around the issue.
+  END {
+  	$RA = undef;
+  	$ra_invalid = 1;
+  }
+  
+  sub _auth_providers () {
+  	require SVN::Client;
+  	my @rv = (
+  	  SVN::Client::get_simple_provider(),
+  	  SVN::Client::get_ssl_server_trust_file_provider(),
+  	  SVN::Client::get_simple_prompt_provider(
+  	    \&Git::SVN::Prompt::simple, 2),
+  	  SVN::Client::get_ssl_client_cert_file_provider(),
+  	  SVN::Client::get_ssl_client_cert_prompt_provider(
+  	    \&Git::SVN::Prompt::ssl_client_cert, 2),
+  	  SVN::Client::get_ssl_client_cert_pw_file_provider(),
+  	  SVN::Client::get_ssl_client_cert_pw_prompt_provider(
+  	    \&Git::SVN::Prompt::ssl_client_cert_pw, 2),
+  	  SVN::Client::get_username_provider(),
+  	  SVN::Client::get_ssl_server_trust_prompt_provider(
+  	    \&Git::SVN::Prompt::ssl_server_trust),
+  	  SVN::Client::get_username_prompt_provider(
+  	    \&Git::SVN::Prompt::username, 2)
+  	);
+  
+  	# earlier 1.6.x versions would segfault, and <= 1.5.x didn't have
+  	# this function
+  	if (::compare_svn_version('1.6.15') >= 0) {
+  		my $config = SVN::Core::config_get_config($config_dir);
+  		my ($p, @a);
+  		# config_get_config returns all config files from
+  		# ~/.subversion, auth_get_platform_specific_client_providers
+  		# just wants the config "file".
+  		@a = ($config->{'config'}, undef);
+  		$p = SVN::Core::auth_get_platform_specific_client_providers(@a);
+  		# Insert the return value from
+  		# auth_get_platform_specific_providers
+  		unshift @rv, @$p;
+  	}
+  	\@rv;
+  }
+  
+  sub prepare_config_once {
+  	SVN::_Core::svn_config_ensure($config_dir, undef);
+  	my ($baton, $callbacks) = SVN::Core::auth_open_helper(_auth_providers);
+  	my $config = SVN::Core::config_get_config($config_dir);
+  	my $conf_t = $config->{'config'};
+  
+  	no warnings 'once';
+  	# The usage of $SVN::_Core::SVN_CONFIG_* variables
+  	# produces warnings that variables are used only once.
+  	# I had not found the better way to shut them up, so
+  	# the warnings of type 'once' are disabled in this block.
+  	if (SVN::_Core::svn_config_get_bool($conf_t,
+  	    $SVN::_Core::SVN_CONFIG_SECTION_AUTH,
+  	    $SVN::_Core::SVN_CONFIG_OPTION_STORE_PASSWORDS,
+  	    1) == 0) {
+  		my $val = '1';
+  		if (::compare_svn_version('1.9.0') < 0) { # pre-SVN r1553823
+  			my $dont_store_passwords = 1;
+  			$val = bless \$dont_store_passwords, "_p_void";
+  		}
+  		SVN::_Core::svn_auth_set_parameter($baton,
+  		    $SVN::_Core::SVN_AUTH_PARAM_DONT_STORE_PASSWORDS,
+  		    $val);
+  	}
+  	if (SVN::_Core::svn_config_get_bool($conf_t,
+  	    $SVN::_Core::SVN_CONFIG_SECTION_AUTH,
+  	    $SVN::_Core::SVN_CONFIG_OPTION_STORE_AUTH_CREDS,
+  	    1) == 0) {
+  		$Git::SVN::Prompt::_no_auth_cache = 1;
+  	}
+  
+  	return ($config, $baton, $callbacks);
+  } # no warnings 'once'
+  
+  INIT {
+  	Memoize::memoize '_auth_providers';
+  	Memoize::memoize 'prepare_config_once';
+  }
+  
+  sub new {
+  	my ($class, $url) = @_;
+  	$url = canonicalize_url($url);
+  	return $RA if ($RA && $RA->url eq $url);
+  
+  	::_req_svn();
+  
+  	$RA = undef;
+  	my ($config, $baton, $callbacks) = prepare_config_once();
+  	my $self = SVN::Ra->new(url => $url, auth => $baton,
+  	                      config => $config,
+  			      pool => SVN::Pool->new,
+  	                      auth_provider_callbacks => $callbacks);
+  	$RA = bless $self, $class;
+  
+  	# Make sure its canonicalized
+  	$self->url($url);
+  	$self->{svn_path} = $url;
+  	$self->{repos_root} = $self->get_repos_root;
+  	$self->{svn_path} =~ s#^\Q$self->{repos_root}\E(/|$)##;
+  	$self->{cache} = { check_path => { r => 0, data => {} },
+  	                   get_dir => { r => 0, data => {} } };
+  
+  	return $RA;
+  }
+  
+  sub url {
+  	my $self = shift;
+  
+  	if (@_) {
+  		my $url = shift;
+  		$self->{url} = canonicalize_url($url);
+  		return;
+  	}
+  
+  	return $self->{url};
+  }
+  
+  sub check_path {
+  	my ($self, $path, $r) = @_;
+  	my $cache = $self->{cache}->{check_path};
+  	if ($r == $cache->{r} && exists $cache->{data}->{$path}) {
+  		return $cache->{data}->{$path};
+  	}
+  	my $pool = SVN::Pool->new;
+  	my $t = $self->SUPER::check_path($path, $r, $pool);
+  	$pool->clear;
+  	if ($r != $cache->{r}) {
+  		%{$cache->{data}} = ();
+  		$cache->{r} = $r;
+  	}
+  	$cache->{data}->{$path} = $t;
+  }
+  
+  sub get_dir {
+  	my ($self, $dir, $r) = @_;
+  	my $cache = $self->{cache}->{get_dir};
+  	if ($r == $cache->{r}) {
+  		if (my $x = $cache->{data}->{$dir}) {
+  			return wantarray ? @$x : $x->[0];
+  		}
+  	}
+  	my $pool = SVN::Pool->new;
+  	my ($d, undef, $props);
+  
+  	if (::compare_svn_version('1.4.0') >= 0) {
+  		# n.b. in addition to being potentially more efficient,
+  		# this works around what appears to be a bug in some
+  		# SVN 1.8 versions
+  		my $kind = 1; # SVN_DIRENT_KIND
+  		($d, undef, $props) = $self->get_dir2($dir, $r, $kind, $pool);
+  	} else {
+  		($d, undef, $props) = $self->SUPER::get_dir($dir, $r, $pool);
+  	}
+  	my %dirents = map { $_ => { kind => $d->{$_}->kind } } keys %$d;
+  	$pool->clear;
+  	if ($r != $cache->{r}) {
+  		%{$cache->{data}} = ();
+  		$cache->{r} = $r;
+  	}
+  	$cache->{data}->{$dir} = [ \%dirents, $r, $props ];
+  	wantarray ? (\%dirents, $r, $props) : \%dirents;
+  }
+  
+  # get_log(paths, start, end, limit,
+  #         discover_changed_paths, strict_node_history, receiver)
+  sub get_log {
+  	my ($self, @args) = @_;
+  	my $pool = SVN::Pool->new;
+  
+  	# svn_log_changed_path_t objects passed to get_log are likely to be
+  	# overwritten even if only the refs are copied to an external variable,
+  	# so we should dup the structures in their entirety.  Using an
+  	# externally passed pool (instead of our temporary and quickly cleared
+  	# pool in Git::SVN::Ra) does not help matters at all...
+  	my $receiver = pop @args;
+  	my $prefix = "/".$self->{svn_path};
+  	$prefix =~ s#/+($)##;
+  	my $prefix_regex = qr#^\Q$prefix\E#;
+  	push(@args, sub {
+  		my ($paths) = $_[0];
+  		return &$receiver(@_) unless $paths;
+  		$_[0] = ();
+  		foreach my $p (keys %$paths) {
+  			my $i = $paths->{$p};
+  			# Make path relative to our url, not repos_root
+  			$p =~ s/$prefix_regex//;
+  			my %s = map { $_ => $i->$_; }
+  				qw/copyfrom_path copyfrom_rev action/;
+  			if ($s{'copyfrom_path'}) {
+  				$s{'copyfrom_path'} =~ s/$prefix_regex//;
+  				$s{'copyfrom_path'} = canonicalize_path($s{'copyfrom_path'});
+  			}
+  			$_[0]{$p} = \%s;
+  		}
+  		&$receiver(@_);
+  	});
+  
+  
+  	# the limit parameter was not supported in SVN 1.1.x, so we
+  	# drop it.  Therefore, the receiver callback passed to it
+  	# is made aware of this limitation by being wrapped if
+  	# the limit passed to is being wrapped.
+  	if (::compare_svn_version('1.2.0') <= 0) {
+  		my $limit = splice(@args, 3, 1);
+  		if ($limit > 0) {
+  			my $receiver = pop @args;
+  			push(@args, sub { &$receiver(@_) if (--$limit >= 0) });
+  		}
+  	}
+  	my $ret = $self->SUPER::get_log(@args, $pool);
+  	$pool->clear;
+  	$ret;
+  }
+  
+  # uncommon, only for ancient SVN (<= 1.4.2)
+  sub trees_match {
+  	require IO::File;
+  	require SVN::Client;
+  	my ($self, $url1, $rev1, $url2, $rev2) = @_;
+  	my $ctx = SVN::Client->new(auth => _auth_providers);
+  	my $out = IO::File->new_tmpfile;
+  
+  	# older SVN (1.1.x) doesn't take $pool as the last parameter for
+  	# $ctx->diff(), so we'll create a default one
+  	my $pool = SVN::Pool->new_default_sub;
+  
+  	$ra_invalid = 1; # this will open a new SVN::Ra connection to $url1
+  	$ctx->diff([], $url1, $rev1, $url2, $rev2, 1, 1, 0, $out, $out);
+  	$out->flush;
+  	my $ret = (($out->stat)[7] == 0);
+  	close $out or croak $!;
+  
+  	$ret;
+  }
+  
+  sub get_commit_editor {
+  	my ($self, $log, $cb, $pool) = @_;
+  
+  	my @lock = (::compare_svn_version('1.2.0') >= 0) ? (undef, 0) : ();
+  	$self->SUPER::get_commit_editor($log, $cb, @lock, $pool);
+  }
+  
+  sub gs_do_update {
+  	my ($self, $rev_a, $rev_b, $gs, $editor) = @_;
+  	my $new = ($rev_a == $rev_b);
+  	my $path = $gs->path;
+  
+  	if ($new && -e $gs->{index}) {
+  		unlink $gs->{index} or die
+  		  "Couldn't unlink index: $gs->{index}: $!\n";
+  	}
+  	my $pool = SVN::Pool->new;
+  	$editor->set_path_strip($path);
+  	my (@pc) = split m#/#, $path;
+  	my $reporter = $self->do_update($rev_b, (@pc ? shift @pc : ''),
+  	                                1, $editor, $pool);
+  	my @lock = (::compare_svn_version('1.2.0') >= 0) ? (undef) : ();
+  
+  	# Since we can't rely on svn_ra_reparent being available, we'll
+  	# just have to do some magic with set_path to make it so
+  	# we only want a partial path.
+  	my $sp = '';
+  	my $final = join('/', @pc);
+  	while (@pc) {
+  		$reporter->set_path($sp, $rev_b, 0, @lock, $pool);
+  		$sp .= '/' if length $sp;
+  		$sp .= shift @pc;
+  	}
+  	die "BUG: '$sp' != '$final'\n" if ($sp ne $final);
+  
+  	$reporter->set_path($sp, $rev_a, $new, @lock, $pool);
+  
+  	$reporter->finish_report($pool);
+  	$pool->clear;
+  	$editor->{git_commit_ok};
+  }
+  
+  # this requires SVN 1.4.3 or later (do_switch didn't work before 1.4.3, and
+  # svn_ra_reparent didn't work before 1.4)
+  sub gs_do_switch {
+  	my ($self, $rev_a, $rev_b, $gs, $url_b, $editor) = @_;
+  	my $path = $gs->path;
+  	my $pool = SVN::Pool->new;
+  
+  	my $old_url = $self->url;
+  	my $full_url = add_path_to_url( $self->url, $path );
+  	my ($ra, $reparented);
+  
+  	if ($old_url =~ m#^svn(\+\w+)?://# ||
+  	    ($full_url =~ m#^https?://# &&
+  	     canonicalize_url($full_url) ne $full_url)) {
+  		$_[0] = undef;
+  		$self = undef;
+  		$RA = undef;
+  		$ra = Git::SVN::Ra->new($full_url);
+  		$ra_invalid = 1;
+  	} elsif ($old_url ne $full_url) {
+  		SVN::_Ra::svn_ra_reparent(
+  			$self->{session},
+  			canonicalize_url($full_url),
+  			$pool
+  		);
+  		$self->url($full_url);
+  		$reparented = 1;
+  	}
+  
+  	$ra ||= $self;
+  	$url_b = canonicalize_url($url_b);
+  	my $reporter = $ra->do_switch($rev_b, '', 1, $url_b, $editor, $pool);
+  	my @lock = (::compare_svn_version('1.2.0') >= 0) ? (undef) : ();
+  	$reporter->set_path('', $rev_a, 0, @lock, $pool);
+  	$reporter->finish_report($pool);
+  
+  	if ($reparented) {
+  		SVN::_Ra::svn_ra_reparent($self->{session}, $old_url, $pool);
+  		$self->url($old_url);
+  	}
+  
+  	$pool->clear;
+  	$editor->{git_commit_ok};
+  }
+  
+  sub longest_common_path {
+  	my ($gsv, $globs) = @_;
+  	my %common;
+  	my $common_max = scalar @$gsv;
+  
+  	foreach my $gs (@$gsv) {
+  		my @tmp = split m#/#, $gs->path;
+  		my $p = '';
+  		foreach (@tmp) {
+  			$p .= length($p) ? "/$_" : $_;
+  			$common{$p} ||= 0;
+  			$common{$p}++;
+  		}
+  	}
+  	$globs ||= [];
+  	$common_max += scalar @$globs;
+  	foreach my $glob (@$globs) {
+  		my @tmp = split m#/#, $glob->{path}->{left};
+  		my $p = '';
+  		foreach (@tmp) {
+  			$p .= length($p) ? "/$_" : $_;
+  			$common{$p} ||= 0;
+  			$common{$p}++;
+  		}
+  	}
+  
+  	my $longest_path = '';
+  	foreach (sort {length $b <=> length $a} keys %common) {
+  		if ($common{$_} == $common_max) {
+  			$longest_path = $_;
+  			last;
+  		}
+  	}
+  	$longest_path;
+  }
+  
+  sub gs_fetch_loop_common {
+  	my ($self, $base, $head, $gsv, $globs) = @_;
+  	return if ($base > $head);
+  	# Make sure the cat_blob open2 FileHandle is created before calling
+  	# SVN::Pool::new_default so that it does not incorrectly end up in the pool.
+  	$::_repository->_open_cat_blob_if_needed;
+  	my $gpool = SVN::Pool->new_default;
+  	my $ra_url = $self->url;
+  	my $reload_ra = sub {
+  		$_[0] = undef;
+  		$self = undef;
+  		$RA = undef;
+  		$gpool->clear;
+  		$self = Git::SVN::Ra->new($ra_url);
+  		$ra_invalid = undef;
+  	};
+  	my $inc = $_log_window_size;
+  	my ($min, $max) = ($base, $head < $base + $inc ? $head : $base + $inc);
+  	my $longest_path = longest_common_path($gsv, $globs);
+  	my $find_trailing_edge;
+  	while (1) {
+  		my %revs;
+  		my $err;
+  		my $err_handler = $SVN::Error::handler;
+  		$SVN::Error::handler = sub {
+  			($err) = @_;
+  			skip_unknown_revs($err);
+  		};
+  		sub _cb {
+  			my ($paths, $r, $author, $date, $log) = @_;
+  			[ $paths,
+  			  { author => $author, date => $date, log => $log } ];
+  		}
+  		$self->get_log([$longest_path], $min, $max, 0, 1, 1,
+  		               sub { $revs{$_[1]} = _cb(@_) });
+  		if ($err) {
+  			print "Checked through r$max\r";
+  		} else {
+  			$find_trailing_edge = 1;
+  		}
+  		if ($err and $find_trailing_edge) {
+  			print STDERR "Path '$longest_path' ",
+  				     "was probably deleted:\n",
+  				     $err->expanded_message,
+  				     "\nWill attempt to follow ",
+  				     "revisions r$min .. r$max ",
+  				     "committed before the deletion\n";
+  			my $hi = $max;
+  			while (--$hi >= $min) {
+  				my $ok;
+  				$self->get_log([$longest_path], $min, $hi,
+  				               0, 1, 1, sub {
+  				               $ok = $_[1];
+  				               $revs{$_[1]} = _cb(@_) });
+  				if ($ok) {
+  					print STDERR "r$min .. r$ok OK\n";
+  					last;
+  				}
+  			}
+  			$find_trailing_edge = 0;
+  		}
+  		$SVN::Error::handler = $err_handler;
+  
+  		my %exists = map { $_->path => $_ } @$gsv;
+  		foreach my $r (sort {$a <=> $b} keys %revs) {
+  			my ($paths, $logged) = @{delete $revs{$r}};
+  
+  			foreach my $gs ($self->match_globs(\%exists, $paths,
+  			                                   $globs, $r)) {
+  				if ($gs->rev_map_max >= $r) {
+  					next;
+  				}
+  				next unless $gs->match_paths($paths, $r);
+  				$gs->{logged_rev_props} = $logged;
+  				if (my $last_commit = $gs->last_commit) {
+  					$gs->assert_index_clean($last_commit);
+  				}
+  				my $log_entry = $gs->do_fetch($paths, $r);
+  				if ($log_entry) {
+  					$gs->do_git_commit($log_entry);
+  				}
+  				$Git::SVN::INDEX_FILES{$gs->{index}} = 1;
+  			}
+  			foreach my $g (@$globs) {
+  				my $k = "svn-remote.$g->{remote}." .
+  				        "$g->{t}-maxRev";
+  				Git::SVN::tmp_config($k, $r);
+  			}
+  			$reload_ra->() if $ra_invalid;
+  		}
+  		# pre-fill the .rev_db since it'll eventually get filled in
+  		# with '0' x40 if something new gets committed
+  		foreach my $gs (@$gsv) {
+  			next if $gs->rev_map_max >= $max;
+  			next if defined $gs->rev_map_get($max);
+  			$gs->rev_map_set($max, 0 x40);
+  		}
+  		foreach my $g (@$globs) {
+  			my $k = "svn-remote.$g->{remote}.$g->{t}-maxRev";
+  			Git::SVN::tmp_config($k, $max);
+  		}
+  		last if $max >= $head;
+  		$min = $max + 1;
+  		$max += $inc;
+  		$max = $head if ($max > $head);
+  
+  		$reload_ra->();
+  	}
+  	Git::SVN::gc();
+  }
+  
+  sub get_dir_globbed {
+  	my ($self, $left, $depth, $r) = @_;
+  
+  	my @x = eval { $self->get_dir($left, $r) };
+  	return unless scalar @x == 3;
+  	my $dirents = $x[0];
+  	my @finalents;
+  	foreach my $de (keys %$dirents) {
+  		next if $dirents->{$de}->{kind} != $SVN::Node::dir;
+  		if ($depth > 1) {
+  			my @args = ("$left/$de", $depth - 1, $r);
+  			foreach my $dir ($self->get_dir_globbed(@args)) {
+  				push @finalents, "$de/$dir";
+  			}
+  		} else {
+  			push @finalents, $de;
+  		}
+  	}
+  	@finalents;
+  }
+  
+  # return value: 0 -- don't ignore, 1 -- ignore
+  sub is_ref_ignored {
+  	my ($g, $p) = @_;
+  	my $refname = $g->{ref}->full_path($p);
+  	return 1 if defined($g->{ignore_refs_regex}) &&
+  	            $refname =~ m!$g->{ignore_refs_regex}!;
+  	return 0 unless defined($_ignore_refs_regex);
+  	return 1 if $refname =~ m!$_ignore_refs_regex!o;
+  	return 0;
+  }
+  
+  sub match_globs {
+  	my ($self, $exists, $paths, $globs, $r) = @_;
+  
+  	sub get_dir_check {
+  		my ($self, $exists, $g, $r) = @_;
+  
+  		my @dirs = $self->get_dir_globbed($g->{path}->{left},
+  		                                  $g->{path}->{depth},
+  		                                  $r);
+  
+  		foreach my $de (@dirs) {
+  			my $p = $g->{path}->full_path($de);
+  			next if $exists->{$p};
+  			next if (length $g->{path}->{right} &&
+  				 ($self->check_path($p, $r) !=
+  				  $SVN::Node::dir));
+  			next unless $p =~ /$g->{path}->{regex}/;
+  			$exists->{$p} = Git::SVN->init($self->url, $p, undef,
+  					 $g->{ref}->full_path($de), 1);
+  		}
+  	}
+  	foreach my $g (@$globs) {
+  		if (my $path = $paths->{"/$g->{path}->{left}"}) {
+  			if ($path->{action} =~ /^[AR]$/) {
+  				get_dir_check($self, $exists, $g, $r);
+  			}
+  		}
+  		foreach (keys %$paths) {
+  			if (/$g->{path}->{left_regex}/ &&
+  			    !/$g->{path}->{regex}/) {
+  				next if $paths->{$_}->{action} !~ /^[AR]$/;
+  				get_dir_check($self, $exists, $g, $r);
+  			}
+  			next unless /$g->{path}->{regex}/;
+  			my $p = $1;
+  			my $pathname = $g->{path}->full_path($p);
+  			next if is_ref_ignored($g, $p);
+  			next if $exists->{$pathname};
+  			next if ($self->check_path($pathname, $r) !=
+  			         $SVN::Node::dir);
+  			$exists->{$pathname} = Git::SVN->init(
+  			                      $self->url, $pathname, undef,
+  			                      $g->{ref}->full_path($p), 1);
+  		}
+  		my $c = '';
+  		foreach (split m#/#, $g->{path}->{left}) {
+  			$c .= "/$_";
+  			next unless ($paths->{$c} &&
+  			             ($paths->{$c}->{action} =~ /^[AR]$/));
+  			get_dir_check($self, $exists, $g, $r);
+  		}
+  	}
+  	values %$exists;
+  }
+  
+  sub minimize_url {
+  	my ($self) = @_;
+  	return $self->url if ($self->url eq $self->{repos_root});
+  	my $url = $self->{repos_root};
+  	my @components = split(m!/!, $self->{svn_path});
+  	my $c = '';
+  	do {
+  		$url = add_path_to_url($url, $c);
+  		eval {
+  			my $ra = (ref $self)->new($url);
+  			my $latest = $ra->get_latest_revnum;
+  			$ra->get_log("", $latest, 0, 1, 0, 1, sub {});
+  		};
+  	} while ($@ && defined($c = shift @components));
+  
+  	return canonicalize_url($url);
+  }
+  
+  sub can_do_switch {
+  	my $self = shift;
+  	unless (defined $can_do_switch) {
+  		my $pool = SVN::Pool->new;
+  		my $rep = eval {
+  			$self->do_switch(1, '', 0, $self->url,
+  			                 SVN::Delta::Editor->new, $pool);
+  		};
+  		if ($@) {
+  			$can_do_switch = 0;
+  		} else {
+  			$rep->abort_report($pool);
+  			$can_do_switch = 1;
+  		}
+  		$pool->clear;
+  	}
+  	$can_do_switch;
+  }
+  
+  sub skip_unknown_revs {
+  	my ($err) = @_;
+  	my $errno = $err->apr_err();
+  	# Maybe the branch we're tracking didn't
+  	# exist when the repo started, so it's
+  	# not an error if it doesn't, just continue
+  	#
+  	# Wonderfully consistent library, eh?
+  	# 160013 - svn:// and file://
+  	# 175002 - http(s)://
+  	# 175007 - http(s):// (this repo required authorization, too...)
+  	#   More codes may be discovered later...
+  	if ($errno == 175007 || $errno == 175002 || $errno == 160013) {
+  		my $err_key = $err->expanded_message;
+  		# revision numbers change every time, filter them out
+  		$err_key =~ s/\d+/\0/g;
+  		$err_key = "$errno\0$err_key";
+  		unless ($ignored_err{$err_key}) {
+  			warn "W: Ignoring error from SVN, path probably ",
+  			     "does not exist: ($errno): ",
+  			     $err->expanded_message,"\n";
+  			warn "W: Do not be alarmed at the above message ",
+  			     "git-svn is just searching aggressively for ",
+  			     "old history.\n",
+  			     "This may take a while on large repositories\n";
+  			$ignored_err{$err_key} = 1;
+  		}
+  		return;
+  	}
+  	die "Error from SVN, ($errno): ", $err->expanded_message,"\n";
+  }
+  
+  1;
+  __END__
+  
+  =head1 NAME
+  
+  Git::SVN::Ra - Subversion remote access functions for git-svn
+  
+  =head1 SYNOPSIS
+  
+      use Git::SVN::Ra;
+  
+      my $ra = Git::SVN::Ra->new($branchurl);
+      my ($dirents, $fetched_revnum, $props) =
+          $ra->get_dir('.', $SVN::Core::INVALID_REVNUM);
+  
+  =head1 DESCRIPTION
+  
+  This is a wrapper around the L<SVN::Ra> module for use by B<git-svn>.
+  It fills in some default parameters (such as the authentication
+  scheme), smooths over incompatibilities between libsvn versions, adds
+  caching, and implements some functions specific to B<git-svn>.
+  
+  Do not use it unless you are developing git-svn.  The interface will
+  change as git-svn evolves.
+  
+  =head1 DEPENDENCIES
+  
+  Subversion perl bindings,
+  L<Git::SVN>.
+  
+  C<Git::SVN::Ra> has not been tested using callers other than
+  B<git-svn> itself.
+  
+  =head1 SEE ALSO
+  
+  L<SVN::Ra>.
+  
+  =head1 INCOMPATIBILITIES
+  
+  None reported.
+  
+  =head1 BUGS
+  
+  None.
+GIT_SVN_RA
+
+$fatpacked{"Git/SVN/Utils.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GIT_SVN_UTILS';
+  package Git::SVN::Utils;
+  
+  use strict;
+  use warnings;
+  
+  use SVN::Core;
+  
+  use base qw(Exporter);
+  
+  our @EXPORT_OK = qw(
+  	fatal
+  	can_compress
+  	canonicalize_path
+  	canonicalize_url
+  	join_paths
+  	add_path_to_url
+  );
+  
+  
+  =head1 NAME
+  
+  Git::SVN::Utils - utility functions used across Git::SVN
+  
+  =head1 SYNOPSIS
+  
+      use Git::SVN::Utils qw(functions to import);
+  
+  =head1 DESCRIPTION
+  
+  This module contains functions which are useful across many different
+  parts of Git::SVN.  Mostly it's a place to put utility functions
+  rather than duplicate the code or have classes grabbing at other
+  classes.
+  
+  =head1 FUNCTIONS
+  
+  All functions can be imported only on request.
+  
+  =head3 fatal
+  
+      fatal(@message);
+  
+  Display a message and exit with a fatal error code.
+  
+  =cut
+  
+  # Note: not certain why this is in use instead of die.  Probably because
+  # the exit code of die is 255?  Doesn't appear to be used consistently.
+  sub fatal (@) { print STDERR "@_\n"; exit 1 }
+  
+  
+  =head3 can_compress
+  
+      my $can_compress = can_compress;
+  
+  Returns true if Compress::Zlib is available, false otherwise.
+  
+  =cut
+  
+  my $can_compress;
+  sub can_compress {
+  	return $can_compress if defined $can_compress;
+  
+  	return $can_compress = eval { require Compress::Zlib; };
+  }
+  
+  
+  =head3 canonicalize_path
+  
+      my $canoncalized_path = canonicalize_path($path);
+  
+  Converts $path into a canonical form which is safe to pass to the SVN
+  API as a file path.
+  
+  =cut
+  
+  # Turn foo/../bar into bar
+  sub _collapse_dotdot {
+  	my $path = shift;
+  
+  	1 while $path =~ s{/[^/]+/+\.\.}{};
+  	1 while $path =~ s{[^/]+/+\.\./}{};
+  	1 while $path =~ s{[^/]+/+\.\.}{};
+  
+  	return $path;
+  }
+  
+  
+  sub canonicalize_path {
+  	my $path = shift;
+  	my $rv;
+  
+  	# The 1.7 way to do it
+  	if ( defined &SVN::_Core::svn_dirent_canonicalize ) {
+  		$path = _collapse_dotdot($path);
+  		$rv = SVN::_Core::svn_dirent_canonicalize($path);
+  	}
+  	# The 1.6 way to do it
+  	# This can return undef on subversion-perl-1.4.2-2.el5 (CentOS 5.2)
+  	elsif ( defined &SVN::_Core::svn_path_canonicalize ) {
+  		$path = _collapse_dotdot($path);
+  		$rv = SVN::_Core::svn_path_canonicalize($path);
+  	}
+  
+  	return $rv if defined $rv;
+  
+  	# No SVN API canonicalization is available, or the SVN API
+  	# didn't return a successful result, do it ourselves
+  	return _canonicalize_path_ourselves($path);
+  }
+  
+  
+  sub _canonicalize_path_ourselves {
+  	my ($path) = @_;
+  	my $dot_slash_added = 0;
+  	if (substr($path, 0, 1) ne "/") {
+  		$path = "./" . $path;
+  		$dot_slash_added = 1;
+  	}
+  	$path =~ s#/+#/#g;
+  	$path =~ s#/\.(?:/|$)#/#g;
+  	$path = _collapse_dotdot($path);
+  	$path =~ s#/$##g;
+  	$path =~ s#^\./## if $dot_slash_added;
+  	$path =~ s#^\.$##;
+  	return $path;
+  }
+  
+  
+  =head3 canonicalize_url
+  
+      my $canonicalized_url = canonicalize_url($url);
+  
+  Converts $url into a canonical form which is safe to pass to the SVN
+  API as a URL.
+  
+  =cut
+  
+  sub canonicalize_url {
+  	my $url = shift;
+  
+  	# The 1.7 way to do it
+  	if ( defined &SVN::_Core::svn_uri_canonicalize ) {
+  		return SVN::_Core::svn_uri_canonicalize($url);
+  	}
+  	# There wasn't a 1.6 way to do it, so we do it ourself.
+  	else {
+  		return _canonicalize_url_ourselves($url);
+  	}
+  }
+  
+  
+  sub _canonicalize_url_path {
+  	my ($uri_path) = @_;
+  
+  	my @parts;
+  	foreach my $part (split m{/+}, $uri_path) {
+  		$part =~ s/([^!\$%&'()*+,.\/\w:=\@_`~-]|%(?![a-fA-F0-9]{2}))/sprintf("%%%02X",ord($1))/eg;
+  		push @parts, $part;
+  	}
+  
+  	return join('/', @parts);
+  }
+  
+  sub _canonicalize_url_ourselves {
+  	my ($url) = @_;
+  	if ($url =~ m#^([^:]+)://([^/]*)(.*)$#) {
+  		my ($scheme, $domain, $uri) = ($1, $2, _canonicalize_url_path(canonicalize_path($3)));
+  		$url = "$scheme://$domain$uri";
+  	}
+  	$url;
+  }
+  
+  
+  =head3 join_paths
+  
+      my $new_path = join_paths(@paths);
+  
+  Appends @paths together into a single path.  Any empty paths are ignored.
+  
+  =cut
+  
+  sub join_paths {
+  	my @paths = @_;
+  
+  	@paths = grep { defined $_ && length $_ } @paths;
+  
+  	return '' unless @paths;
+  	return $paths[0] if @paths == 1;
+  
+  	my $new_path = shift @paths;
+  	$new_path =~ s{/+$}{};
+  
+  	my $last_path = pop @paths;
+  	$last_path =~ s{^/+}{};
+  
+  	for my $path (@paths) {
+  		$path =~ s{^/+}{};
+  		$path =~ s{/+$}{};
+  		$new_path .= "/$path";
+  	}
+  
+  	return $new_path .= "/$last_path";
+  }
+  
+  
+  =head3 add_path_to_url
+  
+      my $new_url = add_path_to_url($url, $path);
+  
+  Appends $path onto the $url.  If $path is empty, $url is returned unchanged.
+  
+  =cut
+  
+  sub add_path_to_url {
+  	my($url, $path) = @_;
+  
+  	return $url if !defined $path or !length $path;
+  
+  	# Strip trailing and leading slashes so we don't
+  	# wind up with http://x.com///path
+  	$url  =~ s{/+$}{};
+  	$path =~ s{^/+}{};
+  
+  	# If a path has a % in it, URI escape it so it's not
+  	# mistaken for a URI escape later.
+  	$path =~ s{%}{%25}g;
+  
+  	return join '/', $url, $path;
+  }
+  
+  1;
+GIT_SVN_UTILS
+
 $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'GITHUB_ACTIONS';
   package GitHub::Actions;
   
@@ -3066,7 +9163,7 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   
   =head1 VERSION
   
-  This document describes GitHub::Actions version 0.0.3
+  This document describes GitHub::Actions version 0.1.1.1
   
   
   =head1 SYNOPSIS
@@ -3106,10 +9203,13 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
             use GitHub::Actions;
             set_env( 'FOO', 'BAR');
   
+  In most cases, you'll want to just have it installed locally and fatpack it to
+  upload it to the repository.
+  
   =head1 DESCRIPTION
   
-  GitHub Actions include, by default, at least in its linux runners, a
-  system Perl which you can use directly in your GitHub actions. This is
+  GitHub Actions include by default, at least in its Linux runners, a
+  system Perl which you can use directly in your GitHub actions. This here is
   a (for the time being) minimalistic module that tries to help a bit
   with that, by defining a few functions that will be useful when
   performing GitHub actions. Besides the system Perl, you can use any of
@@ -3120,11 +9220,12 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   
   Check out an example of using it in the L<repository|https://github.com/JJ/perl-GitHub-Actions/blob/main/.github/workflows/self-test.yml>
   
-  =head1 INTERFACE 
+  =head1 INTERFACE
   
   =head2 set_env( $env_var_name, $env_var_value)
   
-  This is equivalent to L<setting an environment variable|https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#setting-an-environment-variable>
+  This is equivalent to
+  L<setting an environment variable|https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#setting-an-environment-variable>
   
   =head2 set_output( $output_name, $output_value)
   
@@ -3136,7 +9237,10 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   
   =head2 error( $error_message )
   
-  Equivalent to L<C<error>|https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#setting-an-error-message>, prints an error message.
+  Equivalent to
+  L<C<error>|https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#setting-an-error-message>,
+  prints an error message. Remember to call L<exit_action()> to make the step fail
+  if there's been some error.
   
   =head2 warning( $warning_message )
   
@@ -3169,7 +9273,8 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   
   =head2 exit_action
   
-  Exits with the exit code generated during run
+  Exits with the exit code generated during run, that is, 1 if there's been any
+  error reported.
   
   =head1 CONFIGURATION AND ENVIRONMENT
   
@@ -5762,6 +11867,836 @@ $fatpacked{"YAML/Types.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAML
   1;
 YAML_TYPES
 
+$fatpacked{"private-Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'PRIVATE-ERROR';
+  # Error.pm
+  #
+  # Copyright (c) 1997-8 Graham Barr <gbarr@ti.com>. All rights reserved.
+  # This program is free software; you can redistribute it and/or
+  # modify it under the same terms as Perl itself.
+  #
+  # Based on my original Error.pm, and Exceptions.pm by Peter Seibel
+  # <peter@weblogic.com> and adapted by Jesse Glick <jglick@sig.bsh.com>.
+  #
+  # but modified ***significantly***
+  
+  package Error;
+  
+  use strict;
+  use vars qw($VERSION);
+  use 5.004;
+  
+  $VERSION = "0.15009";
+  
+  use overload (
+  	'""'	   =>	'stringify',
+  	'0+'	   =>	'value',
+  	'bool'     =>	sub { return 1; },
+  	'fallback' =>	1
+  );
+  
+  $Error::Depth = 0;	# Depth to pass to caller()
+  $Error::Debug = 0;	# Generate verbose stack traces
+  @Error::STACK = ();	# Clause stack for try
+  $Error::THROWN = undef;	# last error thrown, a workaround until die $ref works
+  
+  my $LAST;		# Last error created
+  my %ERROR;		# Last error associated with package
+  
+  sub throw_Error_Simple
+  {
+      my $args = shift;
+      return Error::Simple->new($args->{'text'});
+  }
+  
+  $Error::ObjectifyCallback = \&throw_Error_Simple;
+  
+  
+  # Exported subs are defined in Error::subs
+  
+  sub import {
+      shift;
+      local $Exporter::ExportLevel = $Exporter::ExportLevel + 1;
+      Error::subs->import(@_);
+  }
+  
+  # I really want to use last for the name of this method, but it is a keyword
+  # which prevent the syntax  last Error
+  
+  sub prior {
+      shift; # ignore
+  
+      return $LAST unless @_;
+  
+      my $pkg = shift;
+      return exists $ERROR{$pkg} ? $ERROR{$pkg} : undef
+  	unless ref($pkg);
+  
+      my $obj = $pkg;
+      my $err = undef;
+      if($obj->isa('HASH')) {
+  	$err = $obj->{'__Error__'}
+  	    if exists $obj->{'__Error__'};
+      }
+      elsif($obj->isa('GLOB')) {
+  	$err = ${*$obj}{'__Error__'}
+  	    if exists ${*$obj}{'__Error__'};
+      }
+  
+      $err;
+  }
+  
+  sub flush {
+      shift; #ignore
+  
+      unless (@_) {
+         $LAST = undef;
+         return;
+      }
+  
+      my $pkg = shift;
+      return unless ref($pkg);
+  
+      undef $ERROR{$pkg} if defined $ERROR{$pkg};
+  }
+  
+  # Return as much information as possible about where the error
+  # happened. The -stacktrace element only exists if $Error::DEBUG
+  # was set when the error was created
+  
+  sub stacktrace {
+      my $self = shift;
+  
+      return $self->{'-stacktrace'}
+  	if exists $self->{'-stacktrace'};
+  
+      my $text = exists $self->{'-text'} ? $self->{'-text'} : "Died";
+  
+      $text .= sprintf(" at %s line %d.\n", $self->file, $self->line)
+  	unless($text =~ /\n$/s);
+  
+      $text;
+  }
+  
+  # Allow error propagation, ie
+  #
+  # $ber->encode(...) or
+  #    return Error->prior($ber)->associate($ldap);
+  
+  sub associate {
+      my $err = shift;
+      my $obj = shift;
+  
+      return unless ref($obj);
+  
+      if($obj->isa('HASH')) {
+  	$obj->{'__Error__'} = $err;
+      }
+      elsif($obj->isa('GLOB')) {
+  	${*$obj}{'__Error__'} = $err;
+      }
+      $obj = ref($obj);
+      $ERROR{ ref($obj) } = $err;
+  
+      return;
+  }
+  
+  sub new {
+      my $self = shift;
+      my($pkg,$file,$line) = caller($Error::Depth);
+  
+      my $err = bless {
+  	'-package' => $pkg,
+  	'-file'    => $file,
+  	'-line'    => $line,
+  	@_
+      }, $self;
+  
+      $err->associate($err->{'-object'})
+  	if(exists $err->{'-object'});
+  
+      # To always create a stacktrace would be very inefficient, so
+      # we only do it if $Error::Debug is set
+  
+      if($Error::Debug) {
+  	require Carp;
+  	local $Carp::CarpLevel = $Error::Depth;
+  	my $text = defined($err->{'-text'}) ? $err->{'-text'} : "Error";
+  	my $trace = Carp::longmess($text);
+  	# Remove try calls from the trace
+  	$trace =~ s/(\n\s+\S+__ANON__[^\n]+)?\n\s+eval[^\n]+\n\s+Error::subs::try[^\n]+(?=\n)//sog;
+  	$trace =~ s/(\n\s+\S+__ANON__[^\n]+)?\n\s+eval[^\n]+\n\s+Error::subs::run_clauses[^\n]+\n\s+Error::subs::try[^\n]+(?=\n)//sog;
+  	$err->{'-stacktrace'} = $trace
+      }
+  
+      $@ = $LAST = $ERROR{$pkg} = $err;
+  }
+  
+  # Throw an error. this contains some very gory code.
+  
+  sub throw {
+      my $self = shift;
+      local $Error::Depth = $Error::Depth + 1;
+  
+      # if we are not rethrow-ing then create the object to throw
+      $self = $self->new(@_) unless ref($self);
+  
+      die $Error::THROWN = $self;
+  }
+  
+  # syntactic sugar for
+  #
+  #    die with Error( ... );
+  
+  sub with {
+      my $self = shift;
+      local $Error::Depth = $Error::Depth + 1;
+  
+      $self->new(@_);
+  }
+  
+  # syntactic sugar for
+  #
+  #    record Error( ... ) and return;
+  
+  sub record {
+      my $self = shift;
+      local $Error::Depth = $Error::Depth + 1;
+  
+      $self->new(@_);
+  }
+  
+  # catch clause for
+  #
+  # try { ... } catch CLASS with { ... }
+  
+  sub catch {
+      my $pkg = shift;
+      my $code = shift;
+      my $clauses = shift || {};
+      my $catch = $clauses->{'catch'} ||= [];
+  
+      unshift @$catch,  $pkg, $code;
+  
+      $clauses;
+  }
+  
+  # Object query methods
+  
+  sub object {
+      my $self = shift;
+      exists $self->{'-object'} ? $self->{'-object'} : undef;
+  }
+  
+  sub file {
+      my $self = shift;
+      exists $self->{'-file'} ? $self->{'-file'} : undef;
+  }
+  
+  sub line {
+      my $self = shift;
+      exists $self->{'-line'} ? $self->{'-line'} : undef;
+  }
+  
+  sub text {
+      my $self = shift;
+      exists $self->{'-text'} ? $self->{'-text'} : undef;
+  }
+  
+  # overload methods
+  
+  sub stringify {
+      my $self = shift;
+      defined $self->{'-text'} ? $self->{'-text'} : "Died";
+  }
+  
+  sub value {
+      my $self = shift;
+      exists $self->{'-value'} ? $self->{'-value'} : undef;
+  }
+  
+  package Error::Simple;
+  
+  @Error::Simple::ISA = qw(Error);
+  
+  sub new {
+      my $self  = shift;
+      my $text  = "" . shift;
+      my $value = shift;
+      my(@args) = ();
+  
+      local $Error::Depth = $Error::Depth + 1;
+  
+      @args = ( -file => $1, -line => $2)
+  	if($text =~ s/\s+at\s+(\S+)\s+line\s+(\d+)(?:,\s*<[^>]*>\s+line\s+\d+)?\.?\n?$//s);
+      push(@args, '-value', 0 + $value)
+  	if defined($value);
+  
+      $self->SUPER::new(-text => $text, @args);
+  }
+  
+  sub stringify {
+      my $self = shift;
+      my $text = $self->SUPER::stringify;
+      $text .= sprintf(" at %s line %d.\n", $self->file, $self->line)
+  	unless($text =~ /\n$/s);
+      $text;
+  }
+  
+  ##########################################################################
+  ##########################################################################
+  
+  # Inspired by code from Jesse Glick <jglick@sig.bsh.com> and
+  # Peter Seibel <peter@weblogic.com>
+  
+  package Error::subs;
+  
+  use Exporter ();
+  use vars qw(@EXPORT_OK @ISA %EXPORT_TAGS);
+  
+  @EXPORT_OK   = qw(try with finally except otherwise);
+  %EXPORT_TAGS = (try => \@EXPORT_OK);
+  
+  @ISA = qw(Exporter);
+  
+  
+  sub blessed {
+  	my $item = shift;
+  	local $@; # don't kill an outer $@
+  	ref $item and eval { $item->can('can') };
+  }
+  
+  
+  sub run_clauses ($$$\@) {
+      my($clauses,$err,$wantarray,$result) = @_;
+      my $code = undef;
+  
+      $err = $Error::ObjectifyCallback->({'text' =>$err}) unless ref($err);
+  
+      CATCH: {
+  
+  	# catch
+  	my $catch;
+  	if(defined($catch = $clauses->{'catch'})) {
+  	    my $i = 0;
+  
+  	    CATCHLOOP:
+  	    for( ; $i < @$catch ; $i += 2) {
+  		my $pkg = $catch->[$i];
+  		unless(defined $pkg) {
+  		    #except
+  		    splice(@$catch,$i,2,$catch->[$i+1]->());
+  		    $i -= 2;
+  		    next CATCHLOOP;
+  		}
+  		elsif(blessed($err) && $err->isa($pkg)) {
+  		    $code = $catch->[$i+1];
+  		    while(1) {
+  			my $more = 0;
+  			local($Error::THROWN);
+  			my $ok = eval {
+  			    if($wantarray) {
+  				@{$result} = $code->($err,\$more);
+  			    }
+  			    elsif(defined($wantarray)) {
+  			        @{$result} = ();
+  				$result->[0] = $code->($err,\$more);
+  			    }
+  			    else {
+  				$code->($err,\$more);
+  			    }
+  			    1;
+  			};
+  			if( $ok ) {
+  			    next CATCHLOOP if $more;
+  			    undef $err;
+  			}
+  			else {
+  			    $err = defined($Error::THROWN)
+  				    ? $Error::THROWN : $@;
+                  $err = $Error::ObjectifyCallback->({'text' =>$err})
+                      unless ref($err);
+  			}
+  			last CATCH;
+  		    };
+  		}
+  	    }
+  	}
+  
+  	# otherwise
+  	my $owise;
+  	if(defined($owise = $clauses->{'otherwise'})) {
+  	    my $code = $clauses->{'otherwise'};
+  	    my $more = 0;
+  	    my $ok = eval {
+  		if($wantarray) {
+  		    @{$result} = $code->($err,\$more);
+  		}
+  		elsif(defined($wantarray)) {
+  		    @{$result} = ();
+  		    $result->[0] = $code->($err,\$more);
+  		}
+  		else {
+  		    $code->($err,\$more);
+  		}
+  		1;
+  	    };
+  	    if( $ok ) {
+  		undef $err;
+  	    }
+  	    else {
+  		$err = defined($Error::THROWN)
+  			? $Error::THROWN : $@;
+  
+          $err = $Error::ObjectifyCallback->({'text' =>$err})
+              unless ref($err);
+  	    }
+  	}
+      }
+      $err;
+  }
+  
+  sub try (&;$) {
+      my $try = shift;
+      my $clauses = @_ ? shift : {};
+      my $ok = 0;
+      my $err = undef;
+      my @result = ();
+  
+      unshift @Error::STACK, $clauses;
+  
+      my $wantarray = wantarray();
+  
+      do {
+  	local $Error::THROWN = undef;
+      local $@ = undef;
+  
+  	$ok = eval {
+  	    if($wantarray) {
+  		@result = $try->();
+  	    }
+  	    elsif(defined $wantarray) {
+  		$result[0] = $try->();
+  	    }
+  	    else {
+  		$try->();
+  	    }
+  	    1;
+  	};
+  
+  	$err = defined($Error::THROWN) ? $Error::THROWN : $@
+  	    unless $ok;
+      };
+  
+      shift @Error::STACK;
+  
+      $err = run_clauses($clauses,$err,wantarray,@result)
+  	unless($ok);
+  
+      $clauses->{'finally'}->()
+  	if(defined($clauses->{'finally'}));
+  
+      if (defined($err))
+      {
+          if (blessed($err) && $err->can('throw'))
+          {
+              throw $err;
+          }
+          else
+          {
+              die $err;
+          }
+      }
+  
+      wantarray ? @result : $result[0];
+  }
+  
+  # Each clause adds a sub to the list of clauses. The finally clause is
+  # always the last, and the otherwise clause is always added just before
+  # the finally clause.
+  #
+  # All clauses, except the finally clause, add a sub which takes one argument
+  # this argument will be the error being thrown. The sub will return a code ref
+  # if that clause can handle that error, otherwise undef is returned.
+  #
+  # The otherwise clause adds a sub which unconditionally returns the users
+  # code reference, this is why it is forced to be last.
+  #
+  # The catch clause is defined in Error.pm, as the syntax causes it to
+  # be called as a method
+  
+  sub with (&;$) {
+      @_
+  }
+  
+  sub finally (&) {
+      my $code = shift;
+      my $clauses = { 'finally' => $code };
+      $clauses;
+  }
+  
+  # The except clause is a block which returns a hashref or a list of
+  # key-value pairs, where the keys are the classes and the values are subs.
+  
+  sub except (&;$) {
+      my $code = shift;
+      my $clauses = shift || {};
+      my $catch = $clauses->{'catch'} ||= [];
+  
+      my $sub = sub {
+  	my $ref;
+  	my(@array) = $code->($_[0]);
+  	if(@array == 1 && ref($array[0])) {
+  	    $ref = $array[0];
+  	    $ref = [ %$ref ]
+  		if(UNIVERSAL::isa($ref,'HASH'));
+  	}
+  	else {
+  	    $ref = \@array;
+  	}
+  	@$ref
+      };
+  
+      unshift @{$catch}, undef, $sub;
+  
+      $clauses;
+  }
+  
+  sub otherwise (&;$) {
+      my $code = shift;
+      my $clauses = shift || {};
+  
+      if(exists $clauses->{'otherwise'}) {
+  	require Carp;
+  	Carp::croak("Multiple otherwise clauses");
+      }
+  
+      $clauses->{'otherwise'} = $code;
+  
+      $clauses;
+  }
+  
+  1;
+  __END__
+  
+  =head1 NAME
+  
+  Error - Error/exception handling in an OO-ish way
+  
+  =head1 SYNOPSIS
+  
+      use Error qw(:try);
+  
+      throw Error::Simple( "A simple error");
+  
+      sub xyz {
+          ...
+  	record Error::Simple("A simple error")
+  	    and return;
+      }
+  
+      unlink($file) or throw Error::Simple("$file: $!",$!);
+  
+      try {
+  	do_some_stuff();
+  	die "error!" if $condition;
+  	throw Error::Simple -text => "Oops!" if $other_condition;
+      }
+      catch Error::IO with {
+  	my $E = shift;
+  	print STDERR "File ", $E->{'-file'}, " had a problem\n";
+      }
+      except {
+  	my $E = shift;
+  	my $general_handler=sub {send_message $E->{-description}};
+  	return {
+  	    UserException1 => $general_handler,
+  	    UserException2 => $general_handler
+  	};
+      }
+      otherwise {
+  	print STDERR "Well I don't know what to say\n";
+      }
+      finally {
+  	close_the_garage_door_already(); # Should be reliable
+      }; # Don't forget the trailing ; or you might be surprised
+  
+  =head1 DESCRIPTION
+  
+  The C<Error> package provides two interfaces. Firstly C<Error> provides
+  a procedural interface to exception handling. Secondly C<Error> is a
+  base class for errors/exceptions that can either be thrown, for
+  subsequent catch, or can simply be recorded.
+  
+  Errors in the class C<Error> should not be thrown directly, but the
+  user should throw errors from a sub-class of C<Error>.
+  
+  =head1 PROCEDURAL INTERFACE
+  
+  C<Error> exports subroutines to perform exception handling. These will
+  be exported if the C<:try> tag is used in the C<use> line.
+  
+  =over 4
+  
+  =item try BLOCK CLAUSES
+  
+  C<try> is the main subroutine called by the user. All other subroutines
+  exported are clauses to the try subroutine.
+  
+  The BLOCK will be evaluated and, if no error is throw, try will return
+  the result of the block.
+  
+  C<CLAUSES> are the subroutines below, which describe what to do in the
+  event of an error being thrown within BLOCK.
+  
+  =item catch CLASS with BLOCK
+  
+  This clauses will cause all errors that satisfy C<$err-E<gt>isa(CLASS)>
+  to be caught and handled by evaluating C<BLOCK>.
+  
+  C<BLOCK> will be passed two arguments. The first will be the error
+  being thrown. The second is a reference to a scalar variable. If this
+  variable is set by the catch block then, on return from the catch
+  block, try will continue processing as if the catch block was never
+  found.
+  
+  To propagate the error the catch block may call C<$err-E<gt>throw>
+  
+  If the scalar reference by the second argument is not set, and the
+  error is not thrown. Then the current try block will return with the
+  result from the catch block.
+  
+  =item except BLOCK
+  
+  When C<try> is looking for a handler, if an except clause is found
+  C<BLOCK> is evaluated. The return value from this block should be a
+  HASHREF or a list of key-value pairs, where the keys are class names
+  and the values are CODE references for the handler of errors of that
+  type.
+  
+  =item otherwise BLOCK
+  
+  Catch any error by executing the code in C<BLOCK>
+  
+  When evaluated C<BLOCK> will be passed one argument, which will be the
+  error being processed.
+  
+  Only one otherwise block may be specified per try block
+  
+  =item finally BLOCK
+  
+  Execute the code in C<BLOCK> either after the code in the try block has
+  successfully completed, or if the try block throws an error then
+  C<BLOCK> will be executed after the handler has completed.
+  
+  If the handler throws an error then the error will be caught, the
+  finally block will be executed and the error will be re-thrown.
+  
+  Only one finally block may be specified per try block
+  
+  =back
+  
+  =head1 CLASS INTERFACE
+  
+  =head2 CONSTRUCTORS
+  
+  The C<Error> object is implemented as a HASH. This HASH is initialized
+  with the arguments that are passed to its constructor. The elements
+  that are used by, or are retrievable by the C<Error> class are listed
+  below, other classes may add to these.
+  
+  	-file
+  	-line
+  	-text
+  	-value
+  	-object
+  
+  If C<-file> or C<-line> are not specified in the constructor arguments
+  then these will be initialized with the file name and line number where
+  the constructor was called from.
+  
+  If the error is associated with an object then the object should be
+  passed as the C<-object> argument. This will allow the C<Error> package
+  to associate the error with the object.
+  
+  The C<Error> package remembers the last error created, and also the
+  last error associated with a package. This could either be the last
+  error created by a sub in that package, or the last error which passed
+  an object blessed into that package as the C<-object> argument.
+  
+  =over 4
+  
+  =item throw ( [ ARGS ] )
+  
+  Create a new C<Error> object and throw an error, which will be caught
+  by a surrounding C<try> block, if there is one. Otherwise it will cause
+  the program to exit.
+  
+  C<throw> may also be called on an existing error to re-throw it.
+  
+  =item with ( [ ARGS ] )
+  
+  Create a new C<Error> object and returns it. This is defined for
+  syntactic sugar, eg
+  
+      die with Some::Error ( ... );
+  
+  =item record ( [ ARGS ] )
+  
+  Create a new C<Error> object and returns it. This is defined for
+  syntactic sugar, eg
+  
+      record Some::Error ( ... )
+  	and return;
+  
+  =back
+  
+  =head2 STATIC METHODS
+  
+  =over 4
+  
+  =item prior ( [ PACKAGE ] )
+  
+  Return the last error created, or the last error associated with
+  C<PACKAGE>
+  
+  =item flush ( [ PACKAGE ] )
+  
+  Flush the last error created, or the last error associated with
+  C<PACKAGE>.It is necessary to clear the error stack before exiting the
+  package or uncaught errors generated using C<record> will be reported.
+  
+       $Error->flush;
+  
+  =cut
+  
+  =back
+  
+  =head2 OBJECT METHODS
+  
+  =over 4
+  
+  =item stacktrace
+  
+  If the variable C<$Error::Debug> was non-zero when the error was
+  created, then C<stacktrace> returns a string created by calling
+  C<Carp::longmess>. If the variable was zero the C<stacktrace> returns
+  the text of the error appended with the filename and line number of
+  where the error was created, providing the text does not end with a
+  newline.
+  
+  =item object
+  
+  The object this error was associated with
+  
+  =item file
+  
+  The file where the constructor of this error was called from
+  
+  =item line
+  
+  The line where the constructor of this error was called from
+  
+  =item text
+  
+  The text of the error
+  
+  =back
+  
+  =head2 OVERLOAD METHODS
+  
+  =over 4
+  
+  =item stringify
+  
+  A method that converts the object into a string. This method may simply
+  return the same as the C<text> method, or it may append more
+  information. For example the file name and line number.
+  
+  By default this method returns the C<-text> argument that was passed to
+  the constructor, or the string C<"Died"> if none was given.
+  
+  =item value
+  
+  A method that will return a value that can be associated with the
+  error. For example if an error was created due to the failure of a
+  system call, then this may return the numeric value of C<$!> at the
+  time.
+  
+  By default this method returns the C<-value> argument that was passed
+  to the constructor.
+  
+  =back
+  
+  =head1 PRE-DEFINED ERROR CLASSES
+  
+  =over 4
+  
+  =item Error::Simple
+  
+  This class can be used to hold simple error strings and values. Its
+  constructor takes two arguments. The first is a text value, the second
+  is a numeric value. These values are what will be returned by the
+  overload methods.
+  
+  If the text value ends with C<at file line 1> as $@ strings do, then
+  this information will be used to set the C<-file> and C<-line> arguments
+  of the error object.
+  
+  This class is used internally if an eval'd block die's with an error
+  that is a plain string. (Unless C<$Error::ObjectifyCallback> is modified)
+  
+  =back
+  
+  =head1 $Error::ObjectifyCallback
+  
+  This variable holds a reference to a subroutine that converts errors that
+  are plain strings to objects. It is used by Error.pm to convert textual
+  errors to objects, and can be overridden by the user.
+  
+  It accepts a single argument which is a hash reference to named parameters.
+  Currently the only named parameter passed is C<'text'> which is the text
+  of the error, but others may be available in the future.
+  
+  For example the following code will cause Error.pm to throw objects of the
+  class MyError::Bar by default:
+  
+      sub throw_MyError_Bar
+      {
+          my $args = shift;
+          my $err = MyError::Bar->new();
+          $err->{'MyBarText'} = $args->{'text'};
+          return $err;
+      }
+  
+      {
+          local $Error::ObjectifyCallback = \&throw_MyError_Bar;
+  
+          # Error handling here.
+      }
+  
+  =head1 KNOWN BUGS
+  
+  None, but that does not mean there are not any.
+  
+  =head1 AUTHORS
+  
+  Graham Barr <gbarr@pobox.com>
+  
+  The code that inspired me to write this was originally written by
+  Peter Seibel <peter@weblogic.com> and adapted by Jesse Glick
+  <jglick@sig.bsh.com>.
+  
+  =head1 MAINTAINER
+  
+  Shlomi Fish <shlomif@iglu.org.il>
+  
+  =head1 PAST MAINTAINERS
+  
+  Arun Kumar U <u_arunkumar@yahoo.com>
+  
+  =cut
+PRIVATE-ERROR
+
 $fatpacked{"x86_64-linux/List/Util.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'X86_64-LINUX_LIST_UTIL';
   # Copyright (c) 1997-2009 Graham Barr <gbarr@pobox.com>. All rights reserved.
   # This program is free software; you can redistribute it and/or
@@ -5780,7 +12715,7 @@ $fatpacked{"x86_64-linux/List/Util.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\
     all any first min max minstr maxstr none notall product reduce sum sum0 shuffle uniq uniqnum uniqstr
     pairs unpairs pairkeys pairvalues pairmap pairgrep pairfirst
   );
-  our $VERSION    = "1.49";
+  our $VERSION    = "1.47";
   our $XS_VERSION = $VERSION;
   $VERSION    = eval $VERSION;
   
@@ -5881,7 +12816,7 @@ $fatpacked{"x86_64-linux/List/Util.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\
   
   The above example code blocks also suggest how to use C<reduce> to build a
   more efficient combined version of one of these basic functions and a C<map>
-  block. For example, to find the total length of all the strings in a list,
+  block. For example, to find the total length of the all the strings in a list,
   we could use
   
       $total = sum map { length } @strings;
@@ -5914,9 +12849,6 @@ $fatpacked{"x86_64-linux/List/Util.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\
           # at least one string has more than 10 characters
       }
   
-  Note: Due to XS issues the block passed may be able to access the outer @_
-  directly. This is not intentional and will break under debugger.
-  
   =head2 all
   
       my $bool = all { BLOCK } @list;
@@ -5927,9 +12859,6 @@ $fatpacked{"x86_64-linux/List/Util.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\
   make the C<BLOCK> return true. If any element returns false, then it returns
   false. If the C<BLOCK> never returns false or the C<@list> was empty then it
   returns true.
-  
-  Note: Due to XS issues the block passed may be able to access the outer @_
-  directly. This is not intentional and will break under debugger.
   
   =head2 none
   
@@ -5944,9 +12873,6 @@ $fatpacked{"x86_64-linux/List/Util.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\
   Similar to L</any> and L</all>, but with the return sense inverted. C<none>
   returns true only if no value in the C<@list> causes the C<BLOCK> to return
   true, and C<notall> returns true only if not all of the values do.
-  
-  Note: Due to XS issues the block passed may be able to access the outer @_
-  directly. This is not intentional and will break under debugger.
   
   =head2 first
   
@@ -6415,7 +13341,7 @@ $fatpacked{"x86_64-linux/List/Util/XS.pm"} = '#line '.(1+__LINE__).' "'.__FILE__
   use warnings;
   use List::Util;
   
-  our $VERSION = "1.49";       # FIXUP
+  our $VERSION = "1.47";       # FIXUP
   $VERSION = eval $VERSION;    # FIXUP
   
   1;
@@ -6565,7 +13491,7 @@ $fatpacked{"x86_64-linux/Scalar/Util.pm"} = '#line '.(1+__LINE__).' "'.__FILE__.
     dualvar isdual isvstring looks_like_number openhandle readonly set_prototype
     tainted
   );
-  our $VERSION    = "1.49";
+  our $VERSION    = "1.47";
   $VERSION   = eval $VERSION;
   
   require List::Util; # List::Util loads the XS
@@ -6926,7 +13852,7 @@ $fatpacked{"x86_64-linux/Sub/Util.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"
     subname set_subname
   );
   
-  our $VERSION    = "1.49";
+  our $VERSION    = "1.47";
   $VERSION   = eval $VERSION;
   
   require List::Util; # as it has the XS
@@ -7062,1285 +13988,6 @@ $fatpacked{"x86_64-linux/Sub/Util.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"
   1;
 X86_64-LINUX_SUB_UTIL
 
-$fatpacked{"x86_64-linux/version.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'X86_64-LINUX_VERSION';
-  #!perl -w
-  package version;
-  
-  use 5.006002;
-  use strict;
-  use warnings::register;
-  if ($] >= 5.015) {
-      warnings::register_categories(qw/version/);
-  }
-  
-  use vars qw(@ISA $VERSION $CLASS $STRICT $LAX *declare *qv);
-  
-  $VERSION = 0.9918;
-  $CLASS = 'version';
-  
-  # !!!!Delete this next block completely when adding to Perl core!!!!
-  {
-      local $SIG{'__DIE__'};
-      eval "use version::vxs $VERSION";
-      if ( $@ ) { # don't have the XS version installed
-  	eval "use version::vpp $VERSION"; # don't tempt fate
-  	die "$@" if ( $@ );
-  	push @ISA, "version::vpp";
-  	local $^W;
-  	*version::qv = \&version::vpp::qv;
-  	*version::declare = \&version::vpp::declare;
-  	*version::_VERSION = \&version::vpp::_VERSION;
-  	*version::vcmp = \&version::vpp::vcmp;
-  	*version::new = \&version::vpp::new;
-  	*version::numify = \&version::vpp::numify;
-  	*version::normal = \&version::vpp::normal;
-  	if ($] >= 5.009000) {
-  	    no strict 'refs';
-  	    *version::stringify = \&version::vpp::stringify;
-  	    *{'version::(""'} = \&version::vpp::stringify;
-  	    *{'version::(<=>'} = \&version::vpp::vcmp;
-  	    *{'version::(cmp'} = \&version::vpp::vcmp;
-  	    *version::parse = \&version::vpp::parse;
-  	}
-      }
-      else { # use XS module
-  	push @ISA, "version::vxs";
-  	local $^W;
-  	*version::declare = \&version::vxs::declare;
-  	*version::qv = \&version::vxs::qv;
-  	*version::_VERSION = \&version::vxs::_VERSION;
-  	*version::vcmp = \&version::vxs::VCMP;
-  	*version::new = \&version::vxs::new;
-  	*version::numify = \&version::vxs::numify;
-  	*version::normal = \&version::vxs::normal;
-  	if ($] >= 5.009000) {
-  	    no strict 'refs';
-  	    *version::stringify = \&version::vxs::stringify;
-  	    *{'version::(""'} = \&version::vxs::stringify;
-  	    *{'version::(<=>'} = \&version::vxs::VCMP;
-  	    *{'version::(cmp'} = \&version::vxs::VCMP;
-  	    *version::parse = \&version::vxs::parse;
-  	}
-      }
-  }
-  
-  # avoid using Exporter
-  require version::regex;
-  *version::is_lax = \&version::regex::is_lax;
-  *version::is_strict = \&version::regex::is_strict;
-  *LAX = \$version::regex::LAX;
-  *LAX_DECIMAL_VERSION = \$version::regex::LAX_DECIMAL_VERSION;
-  *LAX_DOTTED_DECIMAL_VERSION = \$version::regex::LAX_DOTTED_DECIMAL_VERSION;
-  *STRICT = \$version::regex::STRICT;
-  *STRICT_DECIMAL_VERSION = \$version::regex::STRICT_DECIMAL_VERSION;
-  *STRICT_DOTTED_DECIMAL_VERSION = \$version::regex::STRICT_DOTTED_DECIMAL_VERSION;
-  
-  sub import {
-      no strict 'refs';
-      my ($class) = shift;
-  
-      # Set up any derived class
-      unless ($class eq $CLASS) {
-  	local $^W;
-  	*{$class.'::declare'} =  \&{$CLASS.'::declare'};
-  	*{$class.'::qv'} = \&{$CLASS.'::qv'};
-      }
-  
-      my %args;
-      if (@_) { # any remaining terms are arguments
-  	map { $args{$_} = 1 } @_
-      }
-      else { # no parameters at all on use line
-  	%args =
-  	(
-  	    qv => 1,
-  	    'UNIVERSAL::VERSION' => 1,
-  	);
-      }
-  
-      my $callpkg = caller();
-  
-      if (exists($args{declare})) {
-  	*{$callpkg.'::declare'} =
-  	    sub {return $class->declare(shift) }
-  	  unless defined(&{$callpkg.'::declare'});
-      }
-  
-      if (exists($args{qv})) {
-  	*{$callpkg.'::qv'} =
-  	    sub {return $class->qv(shift) }
-  	  unless defined(&{$callpkg.'::qv'});
-      }
-  
-      if (exists($args{'UNIVERSAL::VERSION'})) {
-  	local $^W;
-  	*UNIVERSAL::VERSION
-  		= \&{$CLASS.'::_VERSION'};
-      }
-  
-      if (exists($args{'VERSION'})) {
-  	*{$callpkg.'::VERSION'} = \&{$CLASS.'::_VERSION'};
-      }
-  
-      if (exists($args{'is_strict'})) {
-  	*{$callpkg.'::is_strict'} = \&{$CLASS.'::is_strict'}
-  	  unless defined(&{$callpkg.'::is_strict'});
-      }
-  
-      if (exists($args{'is_lax'})) {
-  	*{$callpkg.'::is_lax'} = \&{$CLASS.'::is_lax'}
-  	  unless defined(&{$callpkg.'::is_lax'});
-      }
-  }
-  
-  
-  1;
-X86_64-LINUX_VERSION
-
-$fatpacked{"x86_64-linux/version/regex.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'X86_64-LINUX_VERSION_REGEX';
-  package version::regex;
-  
-  use strict;
-  
-  use vars qw(
-      $VERSION $CLASS $STRICT $LAX
-      $STRICT_DECIMAL_VERSION $STRICT_DOTTED_DECIMAL_VERSION
-      $LAX_DECIMAL_VERSION $LAX_DOTTED_DECIMAL_VERSION
-  );
-  
-  $VERSION = 0.9918;
-  
-  #--------------------------------------------------------------------------#
-  # Version regexp components
-  #--------------------------------------------------------------------------#
-  
-  # Fraction part of a decimal version number.  This is a common part of
-  # both strict and lax decimal versions
-  
-  my $FRACTION_PART = qr/\.[0-9]+/;
-  
-  # First part of either decimal or dotted-decimal strict version number.
-  # Unsigned integer with no leading zeroes (except for zero itself) to
-  # avoid confusion with octal.
-  
-  my $STRICT_INTEGER_PART = qr/0|[1-9][0-9]*/;
-  
-  # First part of either decimal or dotted-decimal lax version number.
-  # Unsigned integer, but allowing leading zeros.  Always interpreted
-  # as decimal.  However, some forms of the resulting syntax give odd
-  # results if used as ordinary Perl expressions, due to how perl treats
-  # octals.  E.g.
-  #   version->new("010" ) == 10
-  #   version->new( 010  ) == 8
-  #   version->new( 010.2) == 82  # "8" . "2"
-  
-  my $LAX_INTEGER_PART = qr/[0-9]+/;
-  
-  # Second and subsequent part of a strict dotted-decimal version number.
-  # Leading zeroes are permitted, and the number is always decimal.
-  # Limited to three digits to avoid overflow when converting to decimal
-  # form and also avoid problematic style with excessive leading zeroes.
-  
-  my $STRICT_DOTTED_DECIMAL_PART = qr/\.[0-9]{1,3}/;
-  
-  # Second and subsequent part of a lax dotted-decimal version number.
-  # Leading zeroes are permitted, and the number is always decimal.  No
-  # limit on the numerical value or number of digits, so there is the
-  # possibility of overflow when converting to decimal form.
-  
-  my $LAX_DOTTED_DECIMAL_PART = qr/\.[0-9]+/;
-  
-  # Alpha suffix part of lax version number syntax.  Acts like a
-  # dotted-decimal part.
-  
-  my $LAX_ALPHA_PART = qr/_[0-9]+/;
-  
-  #--------------------------------------------------------------------------#
-  # Strict version regexp definitions
-  #--------------------------------------------------------------------------#
-  
-  # Strict decimal version number.
-  
-  $STRICT_DECIMAL_VERSION =
-      qr/ $STRICT_INTEGER_PART $FRACTION_PART? /x;
-  
-  # Strict dotted-decimal version number.  Must have both leading "v" and
-  # at least three parts, to avoid confusion with decimal syntax.
-  
-  $STRICT_DOTTED_DECIMAL_VERSION =
-      qr/ v $STRICT_INTEGER_PART $STRICT_DOTTED_DECIMAL_PART{2,} /x;
-  
-  # Complete strict version number syntax -- should generally be used
-  # anchored: qr/ \A $STRICT \z /x
-  
-  $STRICT =
-      qr/ $STRICT_DECIMAL_VERSION | $STRICT_DOTTED_DECIMAL_VERSION /x;
-  
-  #--------------------------------------------------------------------------#
-  # Lax version regexp definitions
-  #--------------------------------------------------------------------------#
-  
-  # Lax decimal version number.  Just like the strict one except for
-  # allowing an alpha suffix or allowing a leading or trailing
-  # decimal-point
-  
-  $LAX_DECIMAL_VERSION =
-      qr/ $LAX_INTEGER_PART (?: $FRACTION_PART | \. )? $LAX_ALPHA_PART?
-  	|
-  	$FRACTION_PART $LAX_ALPHA_PART?
-      /x;
-  
-  # Lax dotted-decimal version number.  Distinguished by having either
-  # leading "v" or at least three non-alpha parts.  Alpha part is only
-  # permitted if there are at least two non-alpha parts. Strangely
-  # enough, without the leading "v", Perl takes .1.2 to mean v0.1.2,
-  # so when there is no "v", the leading part is optional
-  
-  $LAX_DOTTED_DECIMAL_VERSION =
-      qr/
-  	v $LAX_INTEGER_PART (?: $LAX_DOTTED_DECIMAL_PART+ $LAX_ALPHA_PART? )?
-  	|
-  	$LAX_INTEGER_PART? $LAX_DOTTED_DECIMAL_PART{2,} $LAX_ALPHA_PART?
-      /x;
-  
-  # Complete lax version number syntax -- should generally be used
-  # anchored: qr/ \A $LAX \z /x
-  #
-  # The string 'undef' is a special case to make for easier handling
-  # of return values from ExtUtils::MM->parse_version
-  
-  $LAX =
-      qr/ undef | $LAX_DOTTED_DECIMAL_VERSION | $LAX_DECIMAL_VERSION /x;
-  
-  #--------------------------------------------------------------------------#
-  
-  # Preloaded methods go here.
-  sub is_strict	{ defined $_[0] && $_[0] =~ qr/ \A $STRICT \z /x }
-  sub is_lax	{ defined $_[0] && $_[0] =~ qr/ \A $LAX \z /x }
-  
-  1;
-X86_64-LINUX_VERSION_REGEX
-
-$fatpacked{"x86_64-linux/version/vpp.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'X86_64-LINUX_VERSION_VPP';
-  package charstar;
-  # a little helper class to emulate C char* semantics in Perl
-  # so that prescan_version can use the same code as in C
-  
-  use overload (
-      '""'	=> \&thischar,
-      '0+'	=> \&thischar,
-      '++'	=> \&increment,
-      '--'	=> \&decrement,
-      '+'		=> \&plus,
-      '-'		=> \&minus,
-      '*'		=> \&multiply,
-      'cmp'	=> \&cmp,
-      '<=>'	=> \&spaceship,
-      'bool'	=> \&thischar,
-      '='		=> \&clone,
-  );
-  
-  sub new {
-      my ($self, $string) = @_;
-      my $class = ref($self) || $self;
-  
-      my $obj = {
-  	string  => [split(//,$string)],
-  	current => 0,
-      };
-      return bless $obj, $class;
-  }
-  
-  sub thischar {
-      my ($self) = @_;
-      my $last = $#{$self->{string}};
-      my $curr = $self->{current};
-      if ($curr >= 0 && $curr <= $last) {
-  	return $self->{string}->[$curr];
-      }
-      else {
-  	return '';
-      }
-  }
-  
-  sub increment {
-      my ($self) = @_;
-      $self->{current}++;
-  }
-  
-  sub decrement {
-      my ($self) = @_;
-      $self->{current}--;
-  }
-  
-  sub plus {
-      my ($self, $offset) = @_;
-      my $rself = $self->clone;
-      $rself->{current} += $offset;
-      return $rself;
-  }
-  
-  sub minus {
-      my ($self, $offset) = @_;
-      my $rself = $self->clone;
-      $rself->{current} -= $offset;
-      return $rself;
-  }
-  
-  sub multiply {
-      my ($left, $right, $swapped) = @_;
-      my $char = $left->thischar();
-      return $char * $right;
-  }
-  
-  sub spaceship {
-      my ($left, $right, $swapped) = @_;
-      unless (ref($right)) { # not an object already
-  	$right = $left->new($right);
-      }
-      return $left->{current} <=> $right->{current};
-  }
-  
-  sub cmp {
-      my ($left, $right, $swapped) = @_;
-      unless (ref($right)) { # not an object already
-  	if (length($right) == 1) { # comparing single character only
-  	    return $left->thischar cmp $right;
-  	}
-  	$right = $left->new($right);
-      }
-      return $left->currstr cmp $right->currstr;
-  }
-  
-  sub bool {
-      my ($self) = @_;
-      my $char = $self->thischar;
-      return ($char ne '');
-  }
-  
-  sub clone {
-      my ($left, $right, $swapped) = @_;
-      $right = {
-  	string  => [@{$left->{string}}],
-  	current => $left->{current},
-      };
-      return bless $right, ref($left);
-  }
-  
-  sub currstr {
-      my ($self, $s) = @_;
-      my $curr = $self->{current};
-      my $last = $#{$self->{string}};
-      if (defined($s) && $s->{current} < $last) {
-  	$last = $s->{current};
-      }
-  
-      my $string = join('', @{$self->{string}}[$curr..$last]);
-      return $string;
-  }
-  
-  package version::vpp;
-  
-  use 5.006002;
-  use strict;
-  use warnings::register;
-  
-  use Config;
-  use vars qw($VERSION $CLASS @ISA $LAX $STRICT $WARN_CATEGORY);
-  $VERSION = 0.9918;
-  $CLASS = 'version::vpp';
-  if ($] > 5.015) {
-      warnings::register_categories(qw/version/);
-      $WARN_CATEGORY = 'version';
-  } else {
-      $WARN_CATEGORY = 'numeric';
-  }
-  
-  require version::regex;
-  *version::vpp::is_strict = \&version::regex::is_strict;
-  *version::vpp::is_lax = \&version::regex::is_lax;
-  *LAX = \$version::regex::LAX;
-  *STRICT = \$version::regex::STRICT;
-  
-  use overload (
-      '""'       => \&stringify,
-      '0+'       => \&numify,
-      'cmp'      => \&vcmp,
-      '<=>'      => \&vcmp,
-      'bool'     => \&vbool,
-      '+'        => \&vnoop,
-      '-'        => \&vnoop,
-      '*'        => \&vnoop,
-      '/'        => \&vnoop,
-      '+='        => \&vnoop,
-      '-='        => \&vnoop,
-      '*='        => \&vnoop,
-      '/='        => \&vnoop,
-      'abs'      => \&vnoop,
-  );
-  
-  sub import {
-      no strict 'refs';
-      my ($class) = shift;
-  
-      # Set up any derived class
-      unless ($class eq $CLASS) {
-  	local $^W;
-  	*{$class.'::declare'} =  \&{$CLASS.'::declare'};
-  	*{$class.'::qv'} = \&{$CLASS.'::qv'};
-      }
-  
-      my %args;
-      if (@_) { # any remaining terms are arguments
-  	map { $args{$_} = 1 } @_
-      }
-      else { # no parameters at all on use line
-  	%args =
-  	(
-  	    qv => 1,
-  	    'UNIVERSAL::VERSION' => 1,
-  	);
-      }
-  
-      my $callpkg = caller();
-  
-      if (exists($args{declare})) {
-  	*{$callpkg.'::declare'} =
-  	    sub {return $class->declare(shift) }
-  	  unless defined(&{$callpkg.'::declare'});
-      }
-  
-      if (exists($args{qv})) {
-  	*{$callpkg.'::qv'} =
-  	    sub {return $class->qv(shift) }
-  	  unless defined(&{$callpkg.'::qv'});
-      }
-  
-      if (exists($args{'UNIVERSAL::VERSION'})) {
-  	no warnings qw/redefine/;
-  	*UNIVERSAL::VERSION
-  		= \&{$CLASS.'::_VERSION'};
-      }
-  
-      if (exists($args{'VERSION'})) {
-  	*{$callpkg.'::VERSION'} = \&{$CLASS.'::_VERSION'};
-      }
-  
-      if (exists($args{'is_strict'})) {
-  	*{$callpkg.'::is_strict'} = \&{$CLASS.'::is_strict'}
-  	  unless defined(&{$callpkg.'::is_strict'});
-      }
-  
-      if (exists($args{'is_lax'})) {
-  	*{$callpkg.'::is_lax'} = \&{$CLASS.'::is_lax'}
-  	  unless defined(&{$callpkg.'::is_lax'});
-      }
-  }
-  
-  my $VERSION_MAX = 0x7FFFFFFF;
-  
-  # implement prescan_version as closely to the C version as possible
-  use constant TRUE  => 1;
-  use constant FALSE => 0;
-  
-  sub isDIGIT {
-      my ($char) = shift->thischar();
-      return ($char =~ /\d/);
-  }
-  
-  sub isALPHA {
-      my ($char) = shift->thischar();
-      return ($char =~ /[a-zA-Z]/);
-  }
-  
-  sub isSPACE {
-      my ($char) = shift->thischar();
-      return ($char =~ /\s/);
-  }
-  
-  sub BADVERSION {
-      my ($s, $errstr, $error) = @_;
-      if ($errstr) {
-  	$$errstr = $error;
-      }
-      return $s;
-  }
-  
-  sub prescan_version {
-      my ($s, $strict, $errstr, $sqv, $ssaw_decimal, $swidth, $salpha) = @_;
-      my $qv          = defined $sqv          ? $$sqv          : FALSE;
-      my $saw_decimal = defined $ssaw_decimal ? $$ssaw_decimal : 0;
-      my $width       = defined $swidth       ? $$swidth       : 3;
-      my $alpha       = defined $salpha       ? $$salpha       : FALSE;
-  
-      my $d = $s;
-  
-      if ($qv && isDIGIT($d)) {
-  	goto dotted_decimal_version;
-      }
-  
-      if ($d eq 'v') { # explicit v-string
-  	$d++;
-  	if (isDIGIT($d)) {
-  	    $qv = TRUE;
-  	}
-  	else { # degenerate v-string
-  	    # requires v1.2.3
-  	    return BADVERSION($s,$errstr,"Invalid version format (dotted-decimal versions require at least three parts)");
-  	}
-  
-  dotted_decimal_version:
-  	if ($strict && $d eq '0' && isDIGIT($d+1)) {
-  	    # no leading zeros allowed
-  	    return BADVERSION($s,$errstr,"Invalid version format (no leading zeros)");
-  	}
-  
-  	while (isDIGIT($d)) { 	# integer part
-  	    $d++;
-  	}
-  
-  	if ($d eq '.')
-  	{
-  	    $saw_decimal++;
-  	    $d++; 		# decimal point
-  	}
-  	else
-  	{
-  	    if ($strict) {
-  		# require v1.2.3
-  		return BADVERSION($s,$errstr,"Invalid version format (dotted-decimal versions require at least three parts)");
-  	    }
-  	    else {
-  		goto version_prescan_finish;
-  	    }
-  	}
-  
-  	{
-  	    my $i = 0;
-  	    my $j = 0;
-  	    while (isDIGIT($d)) {	# just keep reading
-  		$i++;
-  		while (isDIGIT($d)) {
-  		    $d++; $j++;
-  		    # maximum 3 digits between decimal
-  		    if ($strict && $j > 3) {
-  			return BADVERSION($s,$errstr,"Invalid version format (maximum 3 digits between decimals)");
-  		    }
-  		}
-  		if ($d eq '_') {
-  		    if ($strict) {
-  			return BADVERSION($s,$errstr,"Invalid version format (no underscores)");
-  		    }
-  		    if ( $alpha ) {
-  			return BADVERSION($s,$errstr,"Invalid version format (multiple underscores)");
-  		    }
-  		    $d++;
-  		    $alpha = TRUE;
-  		}
-  		elsif ($d eq '.') {
-  		    if ($alpha) {
-  			return BADVERSION($s,$errstr,"Invalid version format (underscores before decimal)");
-  		    }
-  		    $saw_decimal++;
-  		    $d++;
-  		}
-  		elsif (!isDIGIT($d)) {
-  		    last;
-  		}
-  		$j = 0;
-  	    }
-  
-  	    if ($strict && $i < 2) {
-  		# requires v1.2.3
-  		return BADVERSION($s,$errstr,"Invalid version format (dotted-decimal versions require at least three parts)");
-  	    }
-  	}
-      } 					# end if dotted-decimal
-      else
-      {					# decimal versions
-  	my $j = 0;
-  	# special $strict case for leading '.' or '0'
-  	if ($strict) {
-  	    if ($d eq '.') {
-  		return BADVERSION($s,$errstr,"Invalid version format (0 before decimal required)");
-  	    }
-  	    if ($d eq '0' && isDIGIT($d+1)) {
-  		return BADVERSION($s,$errstr,"Invalid version format (no leading zeros)");
-  	    }
-  	}
-  
-  	# and we never support negative version numbers
-  	if ($d eq '-') {
-  	    return BADVERSION($s,$errstr,"Invalid version format (negative version number)");
-  	}
-  
-  	# consume all of the integer part
-  	while (isDIGIT($d)) {
-  	    $d++;
-  	}
-  
-  	# look for a fractional part
-  	if ($d eq '.') {
-  	    # we found it, so consume it
-  	    $saw_decimal++;
-  	    $d++;
-  	}
-  	elsif (!$d || $d eq ';' || isSPACE($d) || $d eq '}') {
-  	    if ( $d == $s ) {
-  		# found nothing
-  		return BADVERSION($s,$errstr,"Invalid version format (version required)");
-  	    }
-  	    # found just an integer
-  	    goto version_prescan_finish;
-  	}
-  	elsif ( $d == $s ) {
-  	    # didn't find either integer or period
-  	    return BADVERSION($s,$errstr,"Invalid version format (non-numeric data)");
-  	}
-  	elsif ($d eq '_') {
-  	    # underscore can't come after integer part
-  	    if ($strict) {
-  		return BADVERSION($s,$errstr,"Invalid version format (no underscores)");
-  	    }
-  	    elsif (isDIGIT($d+1)) {
-  		return BADVERSION($s,$errstr,"Invalid version format (alpha without decimal)");
-  	    }
-  	    else {
-  		return BADVERSION($s,$errstr,"Invalid version format (misplaced underscore)");
-  	    }
-  	}
-  	elsif ($d) {
-  	    # anything else after integer part is just invalid data
-  	    return BADVERSION($s,$errstr,"Invalid version format (non-numeric data)");
-  	}
-  
-  	# scan the fractional part after the decimal point
-  	if ($d && !isDIGIT($d) && ($strict || ! ($d eq ';' || isSPACE($d) || $d eq '}') )) {
-  		# $strict or lax-but-not-the-end
-  		return BADVERSION($s,$errstr,"Invalid version format (fractional part required)");
-  	}
-  
-  	while (isDIGIT($d)) {
-  	    $d++; $j++;
-  	    if ($d eq '.' && isDIGIT($d-1)) {
-  		if ($alpha) {
-  		    return BADVERSION($s,$errstr,"Invalid version format (underscores before decimal)");
-  		}
-  		if ($strict) {
-  		    return BADVERSION($s,$errstr,"Invalid version format (dotted-decimal versions must begin with 'v')");
-  		}
-  		$d = $s; # start all over again
-  		$qv = TRUE;
-  		goto dotted_decimal_version;
-  	    }
-  	    if ($d eq '_') {
-  		if ($strict) {
-  		    return BADVERSION($s,$errstr,"Invalid version format (no underscores)");
-  		}
-  		if ( $alpha ) {
-  		    return BADVERSION($s,$errstr,"Invalid version format (multiple underscores)");
-  		}
-  		if ( ! isDIGIT($d+1) ) {
-  		    return BADVERSION($s,$errstr,"Invalid version format (misplaced underscore)");
-  		}
-  		$width = $j;
-  		$d++;
-  		$alpha = TRUE;
-  	    }
-  	}
-      }
-  
-  version_prescan_finish:
-      while (isSPACE($d)) {
-  	$d++;
-      }
-  
-      if ($d && !isDIGIT($d) && (! ($d eq ';' || $d eq '}') )) {
-  	# trailing non-numeric data
-  	return BADVERSION($s,$errstr,"Invalid version format (non-numeric data)");
-      }
-      if ($saw_decimal > 1 && ($d-1) eq '.') {
-  	# no trailing period allowed
-  	return BADVERSION($s,$errstr,"Invalid version format (trailing decimal)");
-      }
-  
-      if (defined $sqv) {
-  	$$sqv = $qv;
-      }
-      if (defined $swidth) {
-  	$$swidth = $width;
-      }
-      if (defined $ssaw_decimal) {
-  	$$ssaw_decimal = $saw_decimal;
-      }
-      if (defined $salpha) {
-  	$$salpha = $alpha;
-      }
-      return $d;
-  }
-  
-  sub scan_version {
-      my ($s, $rv, $qv) = @_;
-      my $start;
-      my $pos;
-      my $last;
-      my $errstr;
-      my $saw_decimal = 0;
-      my $width = 3;
-      my $alpha = FALSE;
-      my $vinf = FALSE;
-      my @av;
-  
-      $s = new charstar $s;
-  
-      while (isSPACE($s)) { # leading whitespace is OK
-  	$s++;
-      }
-  
-      $last = prescan_version($s, FALSE, \$errstr, \$qv, \$saw_decimal,
-  	\$width, \$alpha);
-  
-      if ($errstr) {
-  	# 'undef' is a special case and not an error
-  	if ( $s ne 'undef') {
-  	    require Carp;
-  	    Carp::croak($errstr);
-  	}
-      }
-  
-      $start = $s;
-      if ($s eq 'v') {
-  	$s++;
-      }
-      $pos = $s;
-  
-      if ( $qv ) {
-  	$$rv->{qv} = $qv;
-      }
-      if ( $alpha ) {
-  	$$rv->{alpha} = $alpha;
-      }
-      if ( !$qv && $width < 3 ) {
-  	$$rv->{width} = $width;
-      }
-  
-      while (isDIGIT($pos) || $pos eq '_') {
-  	$pos++;
-      }
-      if (!isALPHA($pos)) {
-  	my $rev;
-  
-  	for (;;) {
-  	    $rev = 0;
-  	    {
-    		# this is atoi() that delimits on underscores
-    		my $end = $pos;
-    		my $mult = 1;
-  		my $orev;
-  
-  		#  the following if() will only be true after the decimal
-  		#  point of a version originally created with a bare
-  		#  floating point number, i.e. not quoted in any way
-  		#
-   		if ( !$qv && $s > $start && $saw_decimal == 1 ) {
-  		    $mult *= 100;
-   		    while ( $s < $end ) {
-  			next if $s eq '_';
-  			$orev = $rev;
-   			$rev += $s * $mult;
-   			$mult /= 10;
-  			if (   (abs($orev) > abs($rev))
-  			    || (abs($rev) > $VERSION_MAX )) {
-  			    warn("Integer overflow in version %d",
-  					   $VERSION_MAX);
-  			    $s = $end - 1;
-  			    $rev = $VERSION_MAX;
-  			    $vinf = 1;
-  			}
-   			$s++;
-  			if ( $s eq '_' ) {
-  			    $s++;
-  			}
-   		    }
-    		}
-   		else {
-   		    while (--$end >= $s) {
-  			next if $end eq '_';
-  			$orev = $rev;
-   			$rev += $end * $mult;
-   			$mult *= 10;
-  			if (   (abs($orev) > abs($rev))
-  			    || (abs($rev) > $VERSION_MAX )) {
-  			    warn("Integer overflow in version");
-  			    $end = $s - 1;
-  			    $rev = $VERSION_MAX;
-  			    $vinf = 1;
-  			}
-   		    }
-   		}
-    	    }
-  
-    	    # Append revision
-  	    push @av, $rev;
-  	    if ( $vinf ) {
-  		$s = $last;
-  		last;
-  	    }
-  	    elsif ( $pos eq '.' ) {
-  		$s = ++$pos;
-  	    }
-  	    elsif ( $pos eq '_' && isDIGIT($pos+1) ) {
-  		$s = ++$pos;
-  	    }
-  	    elsif ( $pos eq ',' && isDIGIT($pos+1) ) {
-  		$s = ++$pos;
-  	    }
-  	    elsif ( isDIGIT($pos) ) {
-  		$s = $pos;
-  	    }
-  	    else {
-  		$s = $pos;
-  		last;
-  	    }
-  	    if ( $qv ) {
-  		while ( isDIGIT($pos) || $pos eq '_') {
-  		    $pos++;
-  		}
-  	    }
-  	    else {
-  		my $digits = 0;
-  		while ( ( isDIGIT($pos) || $pos eq '_' ) && $digits < 3 ) {
-  		    if ( $pos ne '_' ) {
-  			$digits++;
-  		    }
-  		    $pos++;
-  		}
-  	    }
-  	}
-      }
-      if ( $qv ) { # quoted versions always get at least three terms
-  	my $len = $#av;
-  	#  This for loop appears to trigger a compiler bug on OS X, as it
-  	#  loops infinitely. Yes, len is negative. No, it makes no sense.
-  	#  Compiler in question is:
-  	#  gcc version 3.3 20030304 (Apple Computer, Inc. build 1640)
-  	#  for ( len = 2 - len; len > 0; len-- )
-  	#  av_push(MUTABLE_AV(sv), newSViv(0));
-  	#
-  	$len = 2 - $len;
-  	while ($len-- > 0) {
-  	    push @av, 0;
-  	}
-      }
-  
-      # need to save off the current version string for later
-      if ( $vinf ) {
-  	$$rv->{original} = "v.Inf";
-  	$$rv->{vinf} = 1;
-      }
-      elsif ( $s > $start ) {
-  	$$rv->{original} = $start->currstr($s);
-  	if ( $qv && $saw_decimal == 1 && $start ne 'v' ) {
-  	    # need to insert a v to be consistent
-  	    $$rv->{original} = 'v' . $$rv->{original};
-  	}
-      }
-      else {
-  	$$rv->{original} = '0';
-  	push(@av, 0);
-      }
-  
-      # And finally, store the AV in the hash
-      $$rv->{version} = \@av;
-  
-      # fix RT#19517 - special case 'undef' as string
-      if ($s eq 'undef') {
-  	$s += 5;
-      }
-  
-      return $s;
-  }
-  
-  sub new {
-      my $class = shift;
-      unless (defined $class or $#_ > 1) {
-  	require Carp;
-  	Carp::croak('Usage: version::new(class, version)');
-      }
-  
-      my $self = bless ({}, ref ($class) || $class);
-      my $qv = FALSE;
-  
-      if ( $#_ == 1 ) { # must be CVS-style
-  	$qv = TRUE;
-      }
-      my $value = pop; # always going to be the last element
-  
-      if ( ref($value) && eval('$value->isa("version")') ) {
-  	# Can copy the elements directly
-  	$self->{version} = [ @{$value->{version} } ];
-  	$self->{qv} = 1 if $value->{qv};
-  	$self->{alpha} = 1 if $value->{alpha};
-  	$self->{original} = ''.$value->{original};
-  	return $self;
-      }
-  
-      if ( not defined $value or $value =~ /^undef$/ ) {
-  	# RT #19517 - special case for undef comparison
-  	# or someone forgot to pass a value
-  	push @{$self->{version}}, 0;
-  	$self->{original} = "0";
-  	return ($self);
-      }
-  
-  
-      if (ref($value) =~ m/ARRAY|HASH/) {
-  	require Carp;
-  	Carp::croak("Invalid version format (non-numeric data)");
-      }
-  
-      $value = _un_vstring($value);
-  
-      if ($Config{d_setlocale}) {
-  	use POSIX qw/locale_h/;
-  	use if $Config{d_setlocale}, 'locale';
-  	my $currlocale = setlocale(LC_ALL);
-  
-  	# if the current locale uses commas for decimal points, we
-  	# just replace commas with decimal places, rather than changing
-  	# locales
-  	if ( localeconv()->{decimal_point} eq ',' ) {
-  	    $value =~ tr/,/./;
-  	}
-      }
-  
-      # exponential notation
-      if ( $value =~ /\d+.?\d*e[-+]?\d+/ ) {
-  	$value = sprintf("%.9f",$value);
-  	$value =~ s/(0+)$//; # trim trailing zeros
-      }
-  
-      my $s = scan_version($value, \$self, $qv);
-  
-      if ($s) { # must be something left over
-  	warn(sprintf "Version string '%s' contains invalid data; "
-  		   ."ignoring: '%s'", $value, $s);
-      }
-  
-      return ($self);
-  }
-  
-  *parse = \&new;
-  
-  sub numify {
-      my ($self) = @_;
-      unless (_verify($self)) {
-  	require Carp;
-  	Carp::croak("Invalid version object");
-      }
-      my $alpha = $self->{alpha} || "";
-      my $len = $#{$self->{version}};
-      my $digit = $self->{version}[0];
-      my $string = sprintf("%d.", $digit );
-  
-      if ($alpha and warnings::enabled()) {
-  	warnings::warn($WARN_CATEGORY, 'alpha->numify() is lossy');
-      }
-  
-      for ( my $i = 1 ; $i <= $len ; $i++ ) {
-  	$digit = $self->{version}[$i];
-  	$string .= sprintf("%03d", $digit);
-      }
-  
-      if ( $len == 0 ) {
-  	$string .= sprintf("000");
-      }
-  
-      return $string;
-  }
-  
-  sub normal {
-      my ($self) = @_;
-      unless (_verify($self)) {
-  	require Carp;
-  	Carp::croak("Invalid version object");
-      }
-  
-      my $len = $#{$self->{version}};
-      my $digit = $self->{version}[0];
-      my $string = sprintf("v%d", $digit );
-  
-      for ( my $i = 1 ; $i <= $len ; $i++ ) {
-  	$digit = $self->{version}[$i];
-  	$string .= sprintf(".%d", $digit);
-      }
-  
-      if ( $len <= 2 ) {
-  	for ( $len = 2 - $len; $len != 0; $len-- ) {
-  	    $string .= sprintf(".%0d", 0);
-  	}
-      }
-  
-      return $string;
-  }
-  
-  sub stringify {
-      my ($self) = @_;
-      unless (_verify($self)) {
-  	require Carp;
-  	Carp::croak("Invalid version object");
-      }
-      return exists $self->{original}
-      	? $self->{original}
-  	: exists $self->{qv}
-  	    ? $self->normal
-  	    : $self->numify;
-  }
-  
-  sub vcmp {
-      my ($left,$right,$swap) = @_;
-      my $class = ref($left);
-      unless ( UNIVERSAL::isa($right, $class) ) {
-  	$right = $class->new($right);
-      }
-  
-      if ( $swap ) {
-  	($left, $right) = ($right, $left);
-      }
-      unless (_verify($left)) {
-  	require Carp;
-  	Carp::croak("Invalid version object");
-      }
-      unless (_verify($right)) {
-  	require Carp;
-  	Carp::croak("Invalid version format");
-      }
-      my $l = $#{$left->{version}};
-      my $r = $#{$right->{version}};
-      my $m = $l < $r ? $l : $r;
-      my $lalpha = $left->is_alpha;
-      my $ralpha = $right->is_alpha;
-      my $retval = 0;
-      my $i = 0;
-      while ( $i <= $m && $retval == 0 ) {
-  	$retval = $left->{version}[$i] <=> $right->{version}[$i];
-  	$i++;
-      }
-  
-      # possible match except for trailing 0's
-      if ( $retval == 0 && $l != $r ) {
-  	if ( $l < $r ) {
-  	    while ( $i <= $r && $retval == 0 ) {
-  		if ( $right->{version}[$i] != 0 ) {
-  		    $retval = -1; # not a match after all
-  		}
-  		$i++;
-  	    }
-  	}
-  	else {
-  	    while ( $i <= $l && $retval == 0 ) {
-  		if ( $left->{version}[$i] != 0 ) {
-  		    $retval = +1; # not a match after all
-  		}
-  		$i++;
-  	    }
-  	}
-      }
-  
-      return $retval;
-  }
-  
-  sub vbool {
-      my ($self) = @_;
-      return vcmp($self,$self->new("0"),1);
-  }
-  
-  sub vnoop {
-      require Carp;
-      Carp::croak("operation not supported with version object");
-  }
-  
-  sub is_alpha {
-      my ($self) = @_;
-      return (exists $self->{alpha});
-  }
-  
-  sub qv {
-      my $value = shift;
-      my $class = $CLASS;
-      if (@_) {
-  	$class = ref($value) || $value;
-  	$value = shift;
-      }
-  
-      $value = _un_vstring($value);
-      $value = 'v'.$value unless $value =~ /(^v|\d+\.\d+\.\d)/;
-      my $obj = $CLASS->new($value);
-      return bless $obj, $class;
-  }
-  
-  *declare = \&qv;
-  
-  sub is_qv {
-      my ($self) = @_;
-      return (exists $self->{qv});
-  }
-  
-  
-  sub _verify {
-      my ($self) = @_;
-      if ( ref($self)
-  	&& eval { exists $self->{version} }
-  	&& ref($self->{version}) eq 'ARRAY'
-  	) {
-  	return 1;
-      }
-      else {
-  	return 0;
-      }
-  }
-  
-  sub _is_non_alphanumeric {
-      my $s = shift;
-      $s = new charstar $s;
-      while ($s) {
-  	return 0 if isSPACE($s); # early out
-  	return 1 unless (isALPHA($s) || isDIGIT($s) || $s =~ /[.-]/);
-  	$s++;
-      }
-      return 0;
-  }
-  
-  sub _un_vstring {
-      my $value = shift;
-      # may be a v-string
-      if ( length($value) >= 1 && $value !~ /[,._]/
-  	&& _is_non_alphanumeric($value)) {
-  	my $tvalue;
-  	if ( $] >= 5.008_001 ) {
-  	    $tvalue = _find_magic_vstring($value);
-  	    $value = $tvalue if length $tvalue;
-  	}
-  	elsif ( $] >= 5.006_000 ) {
-  	    $tvalue = sprintf("v%vd",$value);
-  	    if ( $tvalue =~ /^v\d+(\.\d+)*$/ ) {
-  		# must be a v-string
-  		$value = $tvalue;
-  	    }
-  	}
-      }
-      return $value;
-  }
-  
-  sub _find_magic_vstring {
-      my $value = shift;
-      my $tvalue = '';
-      require B;
-      my $sv = B::svref_2object(\$value);
-      my $magic = ref($sv) eq 'B::PVMG' ? $sv->MAGIC : undef;
-      while ( $magic ) {
-  	if ( $magic->TYPE eq 'V' ) {
-  	    $tvalue = $magic->PTR;
-  	    $tvalue =~ s/^v?(.+)$/v$1/;
-  	    last;
-  	}
-  	else {
-  	    $magic = $magic->MOREMAGIC;
-  	}
-      }
-      $tvalue =~ tr/_//d;
-      return $tvalue;
-  }
-  
-  sub _VERSION {
-      my ($obj, $req) = @_;
-      my $class = ref($obj) || $obj;
-  
-      no strict 'refs';
-      if ( exists $INC{"$class.pm"} and not %{"$class\::"} and $] >= 5.008) {
-  	 # file but no package
-  	require Carp;
-  	Carp::croak( "$class defines neither package nor VERSION"
-  	    ."--version check failed");
-      }
-  
-      my $version = eval "\$$class\::VERSION";
-      if ( defined $version ) {
-  	local $^W if $] <= 5.008;
-  	$version = version::vpp->new($version);
-      }
-  
-      if ( defined $req ) {
-  	unless ( defined $version ) {
-  	    require Carp;
-  	    my $msg =  $] < 5.006
-  	    ? "$class version $req required--this is only version "
-  	    : "$class does not define \$$class\::VERSION"
-  	      ."--version check failed";
-  
-  	    if ( $ENV{VERSION_DEBUG} ) {
-  		Carp::confess($msg);
-  	    }
-  	    else {
-  		Carp::croak($msg);
-  	    }
-  	}
-  
-  	$req = version::vpp->new($req);
-  
-  	if ( $req > $version ) {
-  	    require Carp;
-  	    if ( $req->is_qv ) {
-  		Carp::croak(
-  		    sprintf ("%s version %s required--".
-  			"this is only version %s", $class,
-  			$req->normal, $version->normal)
-  		);
-  	    }
-  	    else {
-  		Carp::croak(
-  		    sprintf ("%s version %s required--".
-  			"this is only version %s", $class,
-  			$req->stringify, $version->stringify)
-  		);
-  	    }
-  	}
-      }
-  
-      return defined $version ? $version->stringify : undef;
-  }
-  
-  1; #this line is important and will help the module return a true value
-X86_64-LINUX_VERSION_VPP
-
-$fatpacked{"x86_64-linux/version/vxs.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'X86_64-LINUX_VERSION_VXS';
-  #!perl -w
-  package version::vxs;
-  
-  use v5.10;
-  use strict;
-  
-  use vars qw(@ISA $VERSION $CLASS );
-  $VERSION = 0.9918;
-  $CLASS = 'version::vxs';
-  
-  eval {
-      require XSLoader;
-      local $^W; # shut up the 'redefined' warning for UNIVERSAL::VERSION
-      XSLoader::load('version::vxs', $VERSION);
-      1;
-  } or do {
-      require DynaLoader;
-      push @ISA, 'DynaLoader'; 
-      local $^W; # shut up the 'redefined' warning for UNIVERSAL::VERSION
-      bootstrap version::vxs $VERSION;
-  };
-  
-  # Preloaded methods go here.
-  
-  1;
-X86_64-LINUX_VERSION_VXS
-
 s/^  //mg for values %fatpacked;
 
 my $class = 'FatPacked::'.(0+\%fatpacked);
@@ -8404,7 +14051,7 @@ my @repo_files = $student_repo->command("ls-files");
 
 objetivo_0(@repo_files);
 
-exit if $fase <= 1;
+exit_action() if $fase <= 1;
 
 # Fase 2
 my ($readme_file) = grep( /^README/, @repo_files );
@@ -8419,6 +14066,14 @@ if ($@) {
 }
 
 objetivo_1( $iv, \@repo_files );
+
+exit_action() if $fase < 3;
+
+objetivo_3( $iv, $README, \@repo_files );
+
+exit_action() if $fase < 4;
+
+objetivo_4( $iv, $README, \@repo_files );
 
 exit_action();
 
@@ -8450,16 +14105,46 @@ sub objetivo_1 {
   my $iv = shift;
   for my $k (qw(lenguaje entidad)) {
     comprueba( $iv->{$k},
-               "🗝️ $k está presente",
-               "🗝️ $k no está presente"
+               "🗝️ $k está presente en «iv.yaml»",
+               "🗝️ $k no está presente en «iv.yaml»"
              );
   }
 
-  my $repo_files = shift;
-  file_present( $iv->{'entidad'}, $repo_files, "Con la entidad" );
+  if ($iv->{'entidad'}) {
+    my $repo_files = shift;
+    file_present( $iv->{'entidad'}, $repo_files, "Con la entidad" );
+  }
   end_group();
 }
 
+sub objetivo_3 {
+  doing( "🎯 Objetivo 3" );
+  my $iv = shift;
+  my $README = shift;
+  my $repo_files = shift;
+
+  comprueba( $iv->{'automatizar'}, "🗝️ «automatizar» presente", "Falta clave «automatizar»" );
+  comprueba( ref $iv->{'automatizar'} eq "HASH",
+             "🗝️ «automatizar» es un diccionario",
+             "La clave «automatizar» no contiene un diccionario, sino un " . ref $iv->{'automatizar'} );
+  comprueba( $iv->{'automatizar'}{'fichero'}, "🗝️  «automatizar→fichero» presente", "Falta clave «automatizar→fichero»" );
+  file_present( $iv->{'automatizar'}{'fichero'}, $repo_files, "Con el fichero de tareas" );
+  comprueba( $iv->{'automatizar'}{'orden'}, "🗝️ «automatizar→orden» presente", "Falta clave «automatizar→orden»" );
+  README_contiene( "$iv->{'automatizar'}{'orden'} check", $README );
+  end_group();
+}
+
+sub objetivo_4 {
+  doing( "🎯 Objetivo 4" );
+  my $iv = shift;
+  my $README = shift;
+  my $repo_files = shift;
+
+  clave_presente( 'test' );
+  file_present( $iv->{'test'}, $repo_files, "Con un fichero de test" );
+  README_contiene( "$iv->{'automatizar'}{'orden'} test", $README );
+  end_group();
+}
 
 # Funciones de utilidad
 sub comprueba {
@@ -8480,4 +14165,18 @@ sub file_present {
                "Fichero $name → $file no está presente" );
   }
 
+}
+
+sub README_contiene {
+  my ($cadena, $README) = @_;
+  if ( index( $README, $cadena ) >= 0 ) {
+    say all_good( "El README contiene «$cadena»");
+  } else {
+    error (sorry( "El README no contiene «$cadena»" ));
+  }
+}
+
+sub clave_presente {
+  my $clave = shift;
+  comprueba( $iv->{$clave}, "🗝️ «$clave» presente", "Falta clave «$clave»" );
 }

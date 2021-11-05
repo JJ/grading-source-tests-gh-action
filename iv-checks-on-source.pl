@@ -34,7 +34,7 @@ if ( -f "DOCKER_USER" ) {
 
 objetivo_0(@repo_files);
 
-exit if $fase <= 1;
+exit_action() if $fase <= 1;
 
 # Fase 2
 my ($readme_file) = grep( /^README/, @repo_files );
@@ -49,6 +49,14 @@ if ($@) {
 }
 
 objetivo_1( $iv, \@repo_files );
+
+exit_action() if $fase < 3;
+
+objetivo_3( $iv, $README, \@repo_files );
+
+exit_action() if $fase < 4;
+
+objetivo_4( $iv, $README, \@repo_files );
 
 exit_action();
 
@@ -80,16 +88,46 @@ sub objetivo_1 {
   my $iv = shift;
   for my $k (qw(lenguaje entidad)) {
     comprueba( $iv->{$k},
-               "🗝️ $k está presente",
-               "🗝️ $k no está presente"
+               "🗝️ $k está presente en «iv.yaml»",
+               "🗝️ $k no está presente en «iv.yaml»"
              );
   }
 
-  my $repo_files = shift;
-  file_present( $iv->{'entidad'}, $repo_files, "Con la entidad" );
+  if ($iv->{'entidad'}) {
+    my $repo_files = shift;
+    file_present( $iv->{'entidad'}, $repo_files, "Con la entidad" );
+  }
   end_group();
 }
 
+sub objetivo_3 {
+  doing( "🎯 Objetivo 3" );
+  my $iv = shift;
+  my $README = shift;
+  my $repo_files = shift;
+
+  comprueba( $iv->{'automatizar'}, "🗝️ «automatizar» presente", "Falta clave «automatizar»" );
+  comprueba( ref $iv->{'automatizar'} eq "HASH",
+             "🗝️ «automatizar» es un diccionario",
+             "La clave «automatizar» no contiene un diccionario, sino un " . ref $iv->{'automatizar'} );
+  comprueba( $iv->{'automatizar'}{'fichero'}, "🗝️  «automatizar→fichero» presente", "Falta clave «automatizar→fichero»" );
+  file_present( $iv->{'automatizar'}{'fichero'}, $repo_files, "Con el fichero de tareas" );
+  comprueba( $iv->{'automatizar'}{'orden'}, "🗝️ «automatizar→orden» presente", "Falta clave «automatizar→orden»" );
+  README_contiene( "$iv->{'automatizar'}{'orden'} check", $README );
+  end_group();
+}
+
+sub objetivo_4 {
+  doing( "🎯 Objetivo 4" );
+  my $iv = shift;
+  my $README = shift;
+  my $repo_files = shift;
+
+  clave_presente( 'test' );
+  file_present( $iv->{'test'}, $repo_files, "Con un fichero de test" );
+  README_contiene( "$iv->{'automatizar'}{'orden'} test", $README );
+  end_group();
+}
 
 # Funciones de utilidad
 sub comprueba {
@@ -110,4 +148,18 @@ sub file_present {
                "Fichero $name → $file no está presente" );
   }
 
+}
+
+sub README_contiene {
+  my ($cadena, $README) = @_;
+  if ( index( $README, $cadena ) >= 0 ) {
+    say all_good( "El README contiene «$cadena»");
+  } else {
+    error (sorry( "El README no contiene «$cadena»" ));
+  }
+}
+
+sub clave_presente {
+  my $clave = shift;
+  comprueba( $iv->{$clave}, "🗝️ «$clave» presente", "Falta clave «$clave»" );
 }
