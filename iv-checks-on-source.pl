@@ -58,6 +58,10 @@ exit_action() if $fase < 4;
 
 objetivo_4( $iv, $README, \@repo_files );
 
+exit_action() if $fase < 5;
+
+objetivo_5( $iv,  \@repo_files );
+
 exit_action();
 
 # Mensajes diversos
@@ -114,6 +118,7 @@ sub objetivo_3 {
   file_present( $iv->{'automatizar'}{'fichero'}, $repo_files, "Con el fichero de tareas" );
   comprueba( $iv->{'automatizar'}{'orden'}, "🗝️ «automatizar→orden» presente", "Falta clave «automatizar→orden»" );
   README_contiene( "$iv->{'automatizar'}{'orden'} check", $README );
+  set_output( 'ORDEN', $iv->{'automatizar'}{'orden'} );
   end_group();
 }
 
@@ -126,6 +131,15 @@ sub objetivo_4 {
   clave_presente( 'test' );
   file_present( $iv->{'test'}, $repo_files, "Con un fichero de test" );
   README_contiene( "$iv->{'automatizar'}{'orden'} test", $README );
+  end_group();
+}
+
+sub objetivo_5 {
+  doing( "🎯 Objetivo 5" );
+  my $iv = shift;
+  my $repo_files = shift;
+
+  file_present( 'Dockerfile', $repo_files, "Con Dockerfile" );
   end_group();
 }
 
