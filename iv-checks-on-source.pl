@@ -30,8 +30,10 @@ if ( -f "DOCKER_USER" ) {
   my $docker_user = <$fh>;
   chomp $docker_user;
   set_output( 'docker_user', $docker_user );
+  set_env( 'docker_user', $docker_user );
 } else {
   set_output( 'docker_user', $ENV{'user'} );
+  set_env( 'docker_user', $ENV{'user'} );
 }
 
 objetivo_0(@repo_files);
