@@ -29,7 +29,9 @@ if ( -f "DOCKER_USER" ) {
   open( my $fh, "<", "DOCKER_USER" ) || die "No puedo abrir DOCKER_USER";
   my $docker_user = <$fh>;
   chomp $docker_user;
-  set_output( 'DOCKER_USER', $docker_user );
+  set_output( 'docker_user', $docker_user );
+} else {
+  set_output( 'docker_user', $ENV{'user'} );
 }
 
 objetivo_0(@repo_files);
