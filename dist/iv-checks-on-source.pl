@@ -14171,7 +14171,6 @@ sub objetivo_5 {
   doing( "🎯 Objetivo 5" );
   my $iv = shift;
   my $repo_files = shift;
-
   file_present( 'Dockerfile', $repo_files, "Dockerfile" );
   end_group();
 }
@@ -14180,8 +14179,8 @@ sub objetivo_6 {
   doing( "🎯 Objetivo 6" );
   my $iv = shift;
   my $repo_files = shift;
-
-  file_present( $iv->{'CI'}, $repo_files, "Configuración CI" );
+  clave_presente( 'CI' );
+  file_present( $iv->{'CI'}, $repo_files, "Configuración CI" ) if $iv->{'CI'};
   end_group();
 }
 
