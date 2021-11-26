@@ -66,6 +66,10 @@ exit_action() if $fase < 5;
 
 objetivo_5( $iv,  \@repo_files );
 
+exit_action() if $fase < 6;
+
+objetivo_6( $iv,  \@repo_files );
+
 exit_action();
 
 # Mensajes diversos
@@ -143,7 +147,16 @@ sub objetivo_5 {
   my $iv = shift;
   my $repo_files = shift;
 
-  file_present( 'Dockerfile', $repo_files, "Con Dockerfile" );
+  file_present( 'Dockerfile', $repo_files, "Dockerfile" );
+  end_group();
+}
+
+sub objetivo_6 {
+  doing( "🎯 Objetivo 6" );
+  my $iv = shift;
+  my $repo_files = shift;
+
+  file_present( $iv->{'CI'}, $repo_files, "Configuración CI" );
   end_group();
 }
 
