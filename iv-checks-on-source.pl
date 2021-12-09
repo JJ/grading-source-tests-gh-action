@@ -169,6 +169,13 @@ sub objetivo_7 {
   my $repo_files = shift;
   clave_presente( 'configuracion' );
   file_present( $iv->{'configuracion'}, $repo_files, "Configuración app" ) if $iv->{'configuracion'};
+  my $gitignore =  read_text( ".gitignore" );
+   if ( index( $gitignore, ".env" ) >= 0 ) {
+    say all_good( ".gitignore evita los .env");
+  } else {
+    error (sorry( "⚠  .gitignore no evita los ficheros de configuración ⚠" ));
+  }
+
   end_group();
 }
 
