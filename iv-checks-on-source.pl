@@ -70,6 +70,10 @@ exit_action() if $fase < 6;
 
 objetivo_6( $iv,  \@repo_files );
 
+exit_action() if $fase < 7;
+
+objetivo_7( $iv,  \@repo_files );
+
 exit_action();
 
 # Mensajes diversos
@@ -156,6 +160,15 @@ sub objetivo_6 {
   my $repo_files = shift;
   clave_presente( 'CI' );
   file_present( $iv->{'CI'}, $repo_files, "Configuración CI" ) if $iv->{'CI'};
+  end_group();
+}
+
+sub objetivo_7 {
+  doing( "🎯 Objetivo 7" );
+  my $iv = shift;
+  my $repo_files = shift;
+  clave_presente( 'configuracion' );
+  file_present( $iv->{'configuracion'}, $repo_files, "Configuración app" ) if $iv->{'configuracion'};
   end_group();
 }
 
