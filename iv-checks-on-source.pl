@@ -74,6 +74,10 @@ exit_action() if $fase < 7;
 
 objetivo_7( $iv,  \@repo_files );
 
+exit_action() if $fase < 8;
+
+objetivo_8( $iv);
+
 exit_action();
 
 # Mensajes diversos
@@ -174,6 +178,19 @@ sub objetivo_7 {
     say all_good( ".gitignore evita los .env");
   } else {
     error (sorry( "⚠  .gitignore no evita los ficheros de configuración ⚠" ));
+  }
+
+  end_group();
+}
+
+sub objetivo_8 {
+  doing( "🎯 Objetivo 8" );
+  my $iv = shift;
+  clave_presente( 'framework' );
+  if ( ! $iv->{'framework'} =~ /(express|flask)/ ) {
+    say all_good( "No has elegido ninguno de los frameworks «malditos»");
+  } else {
+    error (sorry( "⚠ ¿Te has pensado bien lo de elegir ".$iv->{'framework'}." como framework? ⚠" ));
   }
 
   end_group();
