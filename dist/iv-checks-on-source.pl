@@ -14212,7 +14212,7 @@ sub objetivo_8 {
   doing( "🎯 Objetivo 8" );
   my $iv = shift;
   clave_presente( 'framework' );
-  if ( ! $iv->{'framework'} =~ /(express|flask)/ ) {
+  if ( $iv->{'framework'} !~ /(express|flask)/ ) {
     say all_good( "No has elegido ninguno de los frameworks «malditos»");
   } else {
     error (sorry( "⚠ ¿Te has pensado bien lo de elegir ".$iv->{'framework'}." como framework? ⚠" ));
