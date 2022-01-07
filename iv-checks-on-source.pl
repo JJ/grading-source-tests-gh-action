@@ -135,6 +135,7 @@ sub objetivo_3 {
   comprueba( $iv->{'automatizar'}{'orden'}, "🗝️ «automatizar→orden» presente", "Falta clave «automatizar→orden»" );
   README_contiene( "$iv->{'automatizar'}{'orden'} check", $README );
   set_output( 'ORDEN', $iv->{'automatizar'}{'orden'} );
+  set_env( 'ORDEN', $iv->{'automatizar'}{'orden'} );
   end_group();
 }
 
