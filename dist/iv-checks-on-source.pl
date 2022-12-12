@@ -18,56 +18,55 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
   # but modified ***significantly***
   
   package Error;
-  
+  $Error::VERSION = '0.17029';
   use strict;
   use warnings;
   
-  use vars qw($VERSION);
   use 5.004;
   
-  $VERSION = "0.17022";
-  
   use overload (
-  	'""'	   =>	'stringify',
-  	'0+'	   =>	'value',
-  	'bool'     =>	sub { return 1; },
-  	'fallback' =>	1
+      '""'       => 'stringify',
+      '0+'       => 'value',
+      'bool'     => sub { return 1; },
+      'fallback' => 1
   );
   
-  $Error::Depth = 0;	# Depth to pass to caller()
-  $Error::Debug = 0;	# Generate verbose stack traces
-  @Error::STACK = ();	# Clause stack for try
-  $Error::THROWN = undef;	# last error thrown, a workaround until die $ref works
+  $Error::Depth  = 0;       # Depth to pass to caller()
+  $Error::Debug  = 0;       # Generate verbose stack traces
+  @Error::STACK  = ();      # Clause stack for try
+  $Error::THROWN = undef;   # last error thrown, a workaround until die $ref works
   
-  my $LAST;		# Last error created
-  my %ERROR;		# Last error associated with package
+  my $LAST;                 # Last error created
+  my %ERROR;                # Last error associated with package
   
   sub _throw_Error_Simple
   {
       my $args = shift;
-      return Error::Simple->new($args->{'text'});
+      return Error::Simple->new( $args->{'text'} );
   }
   
   $Error::ObjectifyCallback = \&_throw_Error_Simple;
-  
   
   # Exported subs are defined in Error::subs
   
   use Scalar::Util ();
   
-  sub import {
+  sub import
+  {
       shift;
       my @tags = @_;
       local $Exporter::ExportLevel = $Exporter::ExportLevel + 1;
   
       @tags = grep {
-         if( $_ eq ':warndie' ) {
-            Error::WarnDie->import();
-            0;
-         }
-         else {
-            1;
-         }
+          if ( $_ eq ':warndie' )
+          {
+              Error::WarnDie->import();
+              0;
+          }
+          else
+          {
+              1;
+          }
       } @tags;
   
       Error::subs->import(@tags);
@@ -76,35 +75,40 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
   # I really want to use last for the name of this method, but it is a keyword
   # which prevent the syntax  last Error
   
-  sub prior {
-      shift; # ignore
+  sub prior
+  {
+      shift;    # ignore
   
       return $LAST unless @_;
   
       my $pkg = shift;
       return exists $ERROR{$pkg} ? $ERROR{$pkg} : undef
-  	unless ref($pkg);
+          unless ref($pkg);
   
       my $obj = $pkg;
       my $err = undef;
-      if($obj->isa('HASH')) {
-  	$err = $obj->{'__Error__'}
-  	    if exists $obj->{'__Error__'};
+      if ( $obj->isa('HASH') )
+      {
+          $err = $obj->{'__Error__'}
+              if exists $obj->{'__Error__'};
       }
-      elsif($obj->isa('GLOB')) {
-  	$err = ${*$obj}{'__Error__'}
-  	    if exists ${*$obj}{'__Error__'};
+      elsif ( $obj->isa('GLOB') )
+      {
+          $err = ${*$obj}{'__Error__'}
+              if exists ${*$obj}{'__Error__'};
       }
   
       $err;
   }
   
-  sub flush {
-      shift; #ignore
+  sub flush
+  {
+      shift;    #ignore
   
-      unless (@_) {
-         $LAST = undef;
-         return;
+      unless (@_)
+      {
+          $LAST = undef;
+          return;
       }
   
       my $pkg = shift;
@@ -117,32 +121,35 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
   # happened. The -stacktrace element only exists if $Error::DEBUG
   # was set when the error was created
   
-  sub stacktrace {
+  sub stacktrace
+  {
       my $self = shift;
   
       return $self->{'-stacktrace'}
-  	if exists $self->{'-stacktrace'};
+          if exists $self->{'-stacktrace'};
   
       my $text = exists $self->{'-text'} ? $self->{'-text'} : "Died";
   
-      $text .= sprintf(" at %s line %d.\n", $self->file, $self->line)
-  	unless($text =~ /\n$/s);
+      $text .= sprintf( " at %s line %d.\n", $self->file, $self->line )
+          unless ( $text =~ /\n$/s );
   
       $text;
   }
   
-  
-  sub associate {
+  sub associate
+  {
       my $err = shift;
       my $obj = shift;
   
       return unless ref($obj);
   
-      if($obj->isa('HASH')) {
-  	$obj->{'__Error__'} = $err;
+      if ( $obj->isa('HASH') )
+      {
+          $obj->{'__Error__'} = $err;
       }
-      elsif($obj->isa('GLOB')) {
-  	${*$obj}{'__Error__'} = $err;
+      elsif ( $obj->isa('GLOB') )
+      {
+          ${*$obj}{'__Error__'} = $err;
       }
       $obj = ref($obj);
       $ERROR{ ref($obj) } = $err;
@@ -150,33 +157,37 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
       return;
   }
   
-  
-  sub new {
+  sub new
+  {
       my $self = shift;
-      my($pkg,$file,$line) = caller($Error::Depth);
+      my ( $pkg, $file, $line ) = caller($Error::Depth);
   
       my $err = bless {
-  	'-package' => $pkg,
-  	'-file'    => $file,
-  	'-line'    => $line,
-  	@_
+          '-package' => $pkg,
+          '-file'    => $file,
+          '-line'    => $line,
+          @_
       }, $self;
   
-      $err->associate($err->{'-object'})
-  	if(exists $err->{'-object'});
+      $err->associate( $err->{'-object'} )
+          if ( exists $err->{'-object'} );
   
       # To always create a stacktrace would be very inefficient, so
       # we only do it if $Error::Debug is set
   
-      if($Error::Debug) {
-  	require Carp;
-  	local $Carp::CarpLevel = $Error::Depth;
-  	my $text = defined($err->{'-text'}) ? $err->{'-text'} : "Error";
-  	my $trace = Carp::longmess($text);
-  	# Remove try calls from the trace
-  	$trace =~ s/(\n\s+\S+__ANON__[^\n]+)?\n\s+eval[^\n]+\n\s+Error::subs::try[^\n]+(?=\n)//sog;
-  	$trace =~ s/(\n\s+\S+__ANON__[^\n]+)?\n\s+eval[^\n]+\n\s+Error::subs::run_clauses[^\n]+\n\s+Error::subs::try[^\n]+(?=\n)//sog;
-  	$err->{'-stacktrace'} = $trace
+      if ($Error::Debug)
+      {
+          require Carp;
+          local $Carp::CarpLevel = $Error::Depth;
+          my $text = defined( $err->{'-text'} ) ? $err->{'-text'} : "Error";
+          my $trace = Carp::longmess($text);
+  
+          # Remove try calls from the trace
+          $trace =~
+  s/(\n\s+\S+__ANON__[^\n]+)?\n\s+eval[^\n]+\n\s+Error::subs::try[^\n]+(?=\n)//sog;
+          $trace =~
+  s/(\n\s+\S+__ANON__[^\n]+)?\n\s+eval[^\n]+\n\s+Error::subs::run_clauses[^\n]+\n\s+Error::subs::try[^\n]+(?=\n)//sog;
+          $err->{'-stacktrace'} = $trace;
       }
   
       $@ = $LAST = $ERROR{$pkg} = $err;
@@ -184,7 +195,8 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
   
   # Throw an error. this contains some very gory code.
   
-  sub throw {
+  sub throw
+  {
       my $self = shift;
       local $Error::Depth = $Error::Depth + 1;
   
@@ -198,7 +210,8 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
   #
   #    die with Error( ... );
   
-  sub with {
+  sub with
+  {
       my $self = shift;
       local $Error::Depth = $Error::Depth + 1;
   
@@ -209,7 +222,8 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
   #
   #    record Error( ... ) and return;
   
-  sub record {
+  sub record
+  {
       my $self = shift;
       local $Error::Depth = $Error::Depth + 1;
   
@@ -220,80 +234,86 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
   #
   # try { ... } catch CLASS with { ... }
   
-  sub catch {
-      my $pkg = shift;
-      my $code = shift;
+  sub catch
+  {
+      my $pkg     = shift;
+      my $code    = shift;
       my $clauses = shift || {};
-      my $catch = $clauses->{'catch'} ||= [];
+      my $catch   = $clauses->{'catch'} ||= [];
   
-      unshift @$catch,  $pkg, $code;
+      unshift @$catch, $pkg, $code;
   
       $clauses;
   }
   
   # Object query methods
   
-  sub object {
+  sub object
+  {
       my $self = shift;
       exists $self->{'-object'} ? $self->{'-object'} : undef;
   }
   
-  sub file {
+  sub file
+  {
       my $self = shift;
       exists $self->{'-file'} ? $self->{'-file'} : undef;
   }
   
-  sub line {
+  sub line
+  {
       my $self = shift;
       exists $self->{'-line'} ? $self->{'-line'} : undef;
   }
   
-  sub text {
+  sub text
+  {
       my $self = shift;
       exists $self->{'-text'} ? $self->{'-text'} : undef;
   }
   
   # overload methods
   
-  sub stringify {
+  sub stringify
+  {
       my $self = shift;
       defined $self->{'-text'} ? $self->{'-text'} : "Died";
   }
   
-  sub value {
+  sub value
+  {
       my $self = shift;
       exists $self->{'-value'} ? $self->{'-value'} : undef;
   }
   
   package Error::Simple;
-  
-  use vars qw($VERSION);
-  
-  $VERSION = "0.17022";
-  
+  $Error::Simple::VERSION = '0.17029';
   @Error::Simple::ISA = qw(Error);
   
-  sub new {
-      my $self  = shift;
-      my $text  = "" . shift;
-      my $value = shift;
-      my(@args) = ();
+  sub new
+  {
+      my $self   = shift;
+      my $text   = "" . shift;
+      my $value  = shift;
+      my (@args) = ();
   
       local $Error::Depth = $Error::Depth + 1;
   
-      @args = ( -file => $1, -line => $2)
-  	if($text =~ s/\s+at\s+(\S+)\s+line\s+(\d+)(?:,\s*<[^>]*>\s+line\s+\d+)?\.?\n?$//s);
-      push(@args, '-value', 0 + $value)
-  	if defined($value);
+      @args = ( -file => $1, -line => $2 )
+          if ( $text =~
+          s/\s+at\s+(\S+)\s+line\s+(\d+)(?:,\s*<[^>]*>\s+line\s+\d+)?\.?\n?$//s );
+      push( @args, '-value', 0 + $value )
+          if defined($value);
   
-      $self->SUPER::new(-text => $text, @args);
+      $self->SUPER::new( -text => $text, @args );
   }
   
-  sub stringify {
+  sub stringify
+  {
       my $self = shift;
       my $text = $self->SUPER::stringify;
-      $text .= sprintf(" at %s line %d.\n", $self->file, $self->line)
-  	unless($text =~ /\n$/s);
+      $text .= sprintf( " at %s line %d.\n", $self->file, $self->line )
+          unless ( $text =~ /\n$/s );
       $text;
   }
   
@@ -304,148 +324,172 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
   # Peter Seibel <peter@weblogic.com>
   
   package Error::subs;
-  
+  $Error::subs::VERSION = '0.17029';
   use Exporter ();
   use vars qw(@EXPORT_OK @ISA %EXPORT_TAGS);
   
-  @EXPORT_OK   = qw(try with finally except otherwise);
-  %EXPORT_TAGS = (try => \@EXPORT_OK);
+  @EXPORT_OK = qw(try with finally except otherwise);
+  %EXPORT_TAGS = ( try => \@EXPORT_OK );
   
   @ISA = qw(Exporter);
   
-  sub run_clauses ($$$\@) {
-      my($clauses,$err,$wantarray,$result) = @_;
+  sub run_clauses ($$$\@)
+  {
+      my ( $clauses, $err, $wantarray, $result ) = @_;
       my $code = undef;
   
-      $err = $Error::ObjectifyCallback->({'text' =>$err}) unless ref($err);
+      $err = $Error::ObjectifyCallback->( { 'text' => $err } ) unless ref($err);
   
-      CATCH: {
+  CATCH:
+      {
   
-  	# catch
-  	my $catch;
-  	if(defined($catch = $clauses->{'catch'})) {
-  	    my $i = 0;
+          # catch
+          my $catch;
+          if ( defined( $catch = $clauses->{'catch'} ) )
+          {
+              my $i = 0;
   
-  	    CATCHLOOP:
-  	    for( ; $i < @$catch ; $i += 2) {
-  		my $pkg = $catch->[$i];
-  		unless(defined $pkg) {
-  		    #except
-  		    splice(@$catch,$i,2,$catch->[$i+1]->($err));
-  		    $i -= 2;
-  		    next CATCHLOOP;
-  		}
-  		elsif(Scalar::Util::blessed($err) && $err->isa($pkg)) {
-  		    $code = $catch->[$i+1];
-  		    while(1) {
-  			my $more = 0;
-  			local($Error::THROWN, $@);
-  			my $ok = eval {
-  			    $@ = $err;
-  			    if($wantarray) {
-  				@{$result} = $code->($err,\$more);
-  			    }
-  			    elsif(defined($wantarray)) {
-  			        @{$result} = ();
-  				$result->[0] = $code->($err,\$more);
-  			    }
-  			    else {
-  				$code->($err,\$more);
-  			    }
-  			    1;
-  			};
-  			if( $ok ) {
-  			    next CATCHLOOP if $more;
-  			    undef $err;
-  			}
-  			else {
-  			    $err = $@ || $Error::THROWN;
-  				$err = $Error::ObjectifyCallback->({'text' =>$err})
-  					unless ref($err);
-  			}
-  			last CATCH;
-  		    };
-  		}
-  	    }
-  	}
+          CATCHLOOP:
+              for ( ; $i < @$catch ; $i += 2 )
+              {
+                  my $pkg = $catch->[$i];
+                  unless ( defined $pkg )
+                  {
+                      #except
+                      splice( @$catch, $i, 2, $catch->[ $i + 1 ]->($err) );
+                      $i -= 2;
+                      next CATCHLOOP;
+                  }
+                  elsif ( Scalar::Util::blessed($err) && $err->isa($pkg) )
+                  {
+                      $code = $catch->[ $i + 1 ];
+                      while (1)
+                      {
+                          my $more = 0;
+                          local ( $Error::THROWN, $@ );
+                          my $ok = eval {
+                              $@ = $err;
+                              if ($wantarray)
+                              {
+                                  @{$result} = $code->( $err, \$more );
+                              }
+                              elsif ( defined($wantarray) )
+                              {
+                                  @{$result} = ();
+                                  $result->[0] = $code->( $err, \$more );
+                              }
+                              else
+                              {
+                                  $code->( $err, \$more );
+                              }
+                              1;
+                          };
+                          if ($ok)
+                          {
+                              next CATCHLOOP if $more;
+                              undef $err;
+                          }
+                          else
+                          {
+                              $err = $@ || $Error::THROWN;
+                              $err = $Error::ObjectifyCallback->(
+                                  { 'text' => $err } )
+                                  unless ref($err);
+                          }
+                          last CATCH;
+                      }
+                  }
+              }
+          }
   
-  	# otherwise
-  	my $owise;
-  	if(defined($owise = $clauses->{'otherwise'})) {
-  	    my $code = $clauses->{'otherwise'};
-  	    my $more = 0;
-          local($Error::THROWN, $@);
-  	    my $ok = eval {
-  		$@ = $err;
-  		if($wantarray) {
-  		    @{$result} = $code->($err,\$more);
-  		}
-  		elsif(defined($wantarray)) {
-  		    @{$result} = ();
-  		    $result->[0] = $code->($err,\$more);
-  		}
-  		else {
-  		    $code->($err,\$more);
-  		}
-  		1;
-  	    };
-  	    if( $ok ) {
-  		undef $err;
-  	    }
-  	    else {
-  		$err = $@ || $Error::THROWN;
+          # otherwise
+          my $owise;
+          if ( defined( $owise = $clauses->{'otherwise'} ) )
+          {
+              my $code = $clauses->{'otherwise'};
+              my $more = 0;
+              local ( $Error::THROWN, $@ );
+              my $ok = eval {
+                  $@ = $err;
+                  if ($wantarray)
+                  {
+                      @{$result} = $code->( $err, \$more );
+                  }
+                  elsif ( defined($wantarray) )
+                  {
+                      @{$result} = ();
+                      $result->[0] = $code->( $err, \$more );
+                  }
+                  else
+                  {
+                      $code->( $err, \$more );
+                  }
+                  1;
+              };
+              if ($ok)
+              {
+                  undef $err;
+              }
+              else
+              {
+                  $err = $@ || $Error::THROWN;
   
-  		$err = $Error::ObjectifyCallback->({'text' =>$err})
-  			unless ref($err);
-  	    }
-  	}
+                  $err = $Error::ObjectifyCallback->( { 'text' => $err } )
+                      unless ref($err);
+              }
+          }
       }
       $err;
   }
   
-  sub try (&;$) {
-      my $try = shift;
+  sub try (&;$)
+  {
+      my $try     = shift;
       my $clauses = @_ ? shift : {};
-      my $ok = 0;
-      my $err = undef;
-      my @result = ();
+      my $ok      = 0;
+      my $err     = undef;
+      my @result  = ();
   
       unshift @Error::STACK, $clauses;
   
       my $wantarray = wantarray();
   
-      do {
-  	local $Error::THROWN = undef;
-  	local $@ = undef;
+      do
+      {
+          local $Error::THROWN = undef;
+          local $@             = undef;
   
-  	$ok = eval {
-  	    if($wantarray) {
-  		@result = $try->();
-  	    }
-  	    elsif(defined $wantarray) {
-  		$result[0] = $try->();
-  	    }
-  	    else {
-  		$try->();
-  	    }
-  	    1;
-  	};
+          $ok = eval {
+              if ($wantarray)
+              {
+                  @result = $try->();
+              }
+              elsif ( defined $wantarray )
+              {
+                  $result[0] = $try->();
+              }
+              else
+              {
+                  $try->();
+              }
+              1;
+          };
   
-  	$err = $@ || $Error::THROWN
-  	    unless $ok;
+          $err = $@ || $Error::THROWN
+              unless $ok;
       };
   
       shift @Error::STACK;
   
-      $err = run_clauses($clauses,$err,wantarray,@result)
-      unless($ok);
+      $err = run_clauses( $clauses, $err, wantarray, @result )
+          unless ($ok);
   
       $clauses->{'finally'}->()
-  	if(defined($clauses->{'finally'}));
+          if ( defined( $clauses->{'finally'} ) );
   
-      if (defined($err))
+      if ( defined($err) )
       {
-          if (Scalar::Util::blessed($err) && $err->can('throw'))
+          if ( Scalar::Util::blessed($err) && $err->can('throw') )
           {
               throw $err;
           }
@@ -472,11 +516,13 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
   # The catch clause is defined in Error.pm, as the syntax causes it to
   # be called as a method
   
-  sub with (&;$) {
-      @_
+  sub with (&;$)
+  {
+      @_;
   }
   
-  sub finally (&) {
+  sub finally (&)
+  {
       my $code = shift;
       my $clauses = { 'finally' => $code };
       $clauses;
@@ -485,23 +531,26 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
   # The except clause is a block which returns a hashref or a list of
   # key-value pairs, where the keys are the classes and the values are subs.
   
-  sub except (&;$) {
-      my $code = shift;
+  sub except (&;$)
+  {
+      my $code    = shift;
       my $clauses = shift || {};
-      my $catch = $clauses->{'catch'} ||= [];
+      my $catch   = $clauses->{'catch'} ||= [];
   
       my $sub = sub {
-  	my $ref;
-  	my(@array) = $code->($_[0]);
-  	if(@array == 1 && ref($array[0])) {
-  	    $ref = $array[0];
-  	    $ref = [ %$ref ]
-  		if(UNIVERSAL::isa($ref,'HASH'));
-  	}
-  	else {
-  	    $ref = \@array;
-  	}
-  	@$ref
+          my $ref;
+          my (@array) = $code->( $_[0] );
+          if ( @array == 1 && ref( $array[0] ) )
+          {
+              $ref = $array[0];
+              $ref = [%$ref]
+                  if ( UNIVERSAL::isa( $ref, 'HASH' ) );
+          }
+          else
+          {
+              $ref = \@array;
+          }
+          @$ref;
       };
   
       unshift @{$catch}, undef, $sub;
@@ -509,13 +558,15 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
       $clauses;
   }
   
-  sub otherwise (&;$) {
+  sub otherwise (&;$)
+  {
       my $code = shift;
       my $clauses = shift || {};
   
-      if(exists $clauses->{'otherwise'}) {
-  	require Carp;
-  	Carp::croak("Multiple otherwise clauses");
+      if ( exists $clauses->{'otherwise'} )
+      {
+          require Carp;
+          Carp::croak("Multiple otherwise clauses");
       }
   
       $clauses->{'otherwise'} = $code;
@@ -526,17 +577,20 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
   1;
   
   package Error::WarnDie;
-  
+  $Error::WarnDie::VERSION = '0.17029';
   sub gen_callstack($)
   {
-      my ( $start ) = @_;
+      my ($start) = @_;
   
       require Carp;
       local $Carp::CarpLevel = $start;
       my $trace = Carp::longmess("");
+  
       # Remove try calls from the trace
-      $trace =~ s/(\n\s+\S+__ANON__[^\n]+)?\n\s+eval[^\n]+\n\s+Error::subs::try[^\n]+(?=\n)//sog;
-      $trace =~ s/(\n\s+\S+__ANON__[^\n]+)?\n\s+eval[^\n]+\n\s+Error::subs::run_clauses[^\n]+\n\s+Error::subs::try[^\n]+(?=\n)//sog;
+      $trace =~
+  s/(\n\s+\S+__ANON__[^\n]+)?\n\s+eval[^\n]+\n\s+Error::subs::try[^\n]+(?=\n)//sog;
+      $trace =~
+  s/(\n\s+\S+__ANON__[^\n]+)?\n\s+eval[^\n]+\n\s+Error::subs::run_clauses[^\n]+\n\s+Error::subs::try[^\n]+(?=\n)//sog;
       my @callstack = split( m/\n/, $trace );
       return @callstack;
   }
@@ -546,26 +600,29 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
   
   sub DEATH
   {
-      my ( $e ) = @_;
+      my ($e) = @_;
   
-      local $SIG{__DIE__} = $old_DIE if( defined $old_DIE );
+      local $SIG{__DIE__} = $old_DIE if ( defined $old_DIE );
   
       die @_ if $^S;
   
       my ( $etype, $message, $location, @callstack );
-      if ( ref($e) && $e->isa( "Error" ) ) {
-          $etype = "exception of type " . ref( $e );
-          $message = $e->text;
-          $location = $e->file . ":" . $e->line;
+      if ( ref($e) && $e->isa("Error") )
+      {
+          $etype     = "exception of type " . ref($e);
+          $message   = $e->text;
+          $location  = $e->file . ":" . $e->line;
           @callstack = split( m/\n/, $e->stacktrace );
       }
-      else {
+      else
+      {
           # Don't apply subsequent layer of message formatting
-          die $e if( $e =~ m/^\nUnhandled perl error caught at toplevel:\n\n/ );
+          die $e if ( $e =~ m/^\nUnhandled perl error caught at toplevel:\n\n/ );
           $etype = "perl error";
           my $stackdepth = 0;
-          while( caller( $stackdepth ) =~ m/^Error(?:$|::)/ ) {
-              $stackdepth++
+          while ( caller($stackdepth) =~ m/^Error(?:$|::)/ )
+          {
+              ++$stackdepth;
           }
   
           @callstack = gen_callstack( $stackdepth + 1 );
@@ -573,39 +630,43 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
           $message = "$e";
           chomp $message;
   
-          if ( $message =~ s/ at (.*?) line (\d+)\.$// ) {
+          if ( $message =~ s/ at (.*?) line (\d+)\.$// )
+          {
               $location = $1 . ":" . $2;
           }
-          else {
-              my @caller = caller( $stackdepth );
+          else
+          {
+              my @caller = caller($stackdepth);
               $location = $caller[1] . ":" . $caller[2];
           }
       }
   
       shift @callstack;
-      # Do it this way in case there are no elements; we don't print a spurious \n
-      my $callstack = join( "", map { "$_\n"} @callstack );
   
-      die "\nUnhandled $etype caught at toplevel:\n\n  $message\n\nThrown from: $location\n\nFull stack trace:\n\n$callstack\n";
+      # Do it this way in case there are no elements; we don't print a spurious \n
+      my $callstack = join( "", map { "$_\n" } @callstack );
+  
+      die
+  "\nUnhandled $etype caught at toplevel:\n\n  $message\n\nThrown from: $location\n\nFull stack trace:\n\n$callstack\n";
   }
   
   sub TAXES
   {
-      my ( $message ) = @_;
+      my ($message) = @_;
   
-      local $SIG{__WARN__} = $old_WARN if( defined $old_WARN );
+      local $SIG{__WARN__} = $old_WARN if ( defined $old_WARN );
   
       $message =~ s/ at .*? line \d+\.$//;
       chomp $message;
   
-      my @callstack = gen_callstack( 1 );
-      my $location = shift @callstack;
+      my @callstack = gen_callstack(1);
+      my $location  = shift @callstack;
   
       # $location already starts in a leading space
       $message .= $location;
   
       # Do it this way in case there are no elements; we don't print a spurious \n
-      my $callstack = join( "", map { "$_\n"} @callstack );
+      my $callstack = join( "", map { "$_\n" } @callstack );
   
       warn "$message:\n$callstack";
   }
@@ -623,16 +684,17 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
   
   __END__
   
+  =pod
+  
+  =encoding UTF-8
+  
   =head1 NAME
   
   Error - Error/exception handling in an OO-ish way
   
-  =head1 WARNING
+  =head1 VERSION
   
-  Using the "Error" module is B<no longer recommended> due to the black-magical
-  nature of its syntactic sugar, which often tends to break. Its maintainers
-  have stopped actively writing code that uses it, and discourage people
-  from doing so. See the "SEE ALSO" section below for better recommendations.
+  version 0.17029
   
   =head1 SYNOPSIS
   
@@ -681,6 +743,13 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
   
   Errors in the class C<Error> should not be thrown directly, but the
   user should throw errors from a sub-class of C<Error>.
+  
+  =head1 WARNING
+  
+  Using the "Error" module is B<no longer recommended> due to the black-magical
+  nature of its syntactic sugar, which often tends to break. Its maintainers
+  have stopped actively writing code that uses it, and discourage people
+  from doing so. See the "SEE ALSO" section below for better recommendations.
   
   =head1 PROCEDURAL INTERFACE
   
@@ -836,8 +905,6 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
   
        $Error->flush;
   
-  =cut
-  
   =back
   
   =head2 OBJECT METHODS
@@ -919,7 +986,6 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
   This class is used internally if an eval'd block die's with an error
   that is a plain string. (Unless C<$Error::ObjectifyCallback> is modified)
   
-  
   =head1 $Error::ObjectifyCallback
   
   This variable holds a reference to a subroutine that converts errors that
@@ -946,8 +1012,6 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
   
           # Error handling here.
       }
-  
-  =cut
   
   =head1 MESSAGE HANDLERS
   
@@ -1001,8 +1065,6 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
            main::inner('undef') called at examples/warndie.pl line 20
            main::outer('undef') called at examples/warndie.pl line 23
   
-  =cut
-  
   =head1 SEE ALSO
   
   See L<Exception::Class> for a different module providing Object-Oriented
@@ -1045,8 +1107,120 @@ $fatpacked{"Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR';
   This program is free software; you can redistribute it and/or modify it
   under the same terms as Perl itself.
   
-  =cut
+  =for :stopwords cpan testmatrix url bugtracker rt cpants kwalitee diff irc mailto metadata placeholders metacpan
   
+  =head1 SUPPORT
+  
+  =head2 Websites
+  
+  The following websites have more information about this module, and may be of help to you. As always,
+  in addition to those websites please use your favorite search engine to discover more resources.
+  
+  =over 4
+  
+  =item *
+  
+  MetaCPAN
+  
+  A modern, open-source CPAN search engine, useful to view POD in HTML format.
+  
+  L<https://metacpan.org/release/Error>
+  
+  =item *
+  
+  Search CPAN
+  
+  The default CPAN search engine, useful to view POD in HTML format.
+  
+  L<http://search.cpan.org/dist/Error>
+  
+  =item *
+  
+  RT: CPAN's Bug Tracker
+  
+  The RT ( Request Tracker ) website is the default bug/issue tracking system for CPAN.
+  
+  L<https://rt.cpan.org/Public/Dist/Display.html?Name=Error>
+  
+  =item *
+  
+  CPAN Ratings
+  
+  The CPAN Ratings is a website that allows community ratings and reviews of Perl modules.
+  
+  L<http://cpanratings.perl.org/d/Error>
+  
+  =item *
+  
+  CPANTS
+  
+  The CPANTS is a website that analyzes the Kwalitee ( code metrics ) of a distribution.
+  
+  L<http://cpants.cpanauthors.org/dist/Error>
+  
+  =item *
+  
+  CPAN Testers
+  
+  The CPAN Testers is a network of smoke testers who run automated tests on uploaded CPAN distributions.
+  
+  L<http://www.cpantesters.org/distro/E/Error>
+  
+  =item *
+  
+  CPAN Testers Matrix
+  
+  The CPAN Testers Matrix is a website that provides a visual overview of the test results for a distribution on various Perls/platforms.
+  
+  L<http://matrix.cpantesters.org/?dist=Error>
+  
+  =item *
+  
+  CPAN Testers Dependencies
+  
+  The CPAN Testers Dependencies is a website that shows a chart of the test results of all dependencies for a distribution.
+  
+  L<http://deps.cpantesters.org/?module=Error>
+  
+  =back
+  
+  =head2 Bugs / Feature Requests
+  
+  Please report any bugs or feature requests by email to C<bug-error at rt.cpan.org>, or through
+  the web interface at L<https://rt.cpan.org/Public/Bug/Report.html?Queue=Error>. You will be automatically notified of any
+  progress on the request by the system.
+  
+  =head2 Source Code
+  
+  The code is open to the world, and available for you to hack on. Please feel free to browse it and play
+  with it, or whatever. If you want to contribute patches, please send me a diff or prod me to pull
+  from your repository :)
+  
+  L<https://github.com/shlomif/perl-error.pm>
+  
+    git clone git://github.com/shlomif/perl-error.pm.git
+  
+  =head1 AUTHOR
+  
+  Shlomi Fish ( http://www.shlomifish.org/ )
+  
+  =head1 BUGS
+  
+  Please report any bugs or feature requests on the bugtracker website
+  L<https://github.com/shlomif/perl-error.pm/issues>
+  
+  When submitting a bug or request, please include a test-file or a
+  patch to an existing test-file that illustrates the bug or desired
+  feature.
+  
+  =head1 COPYRIGHT AND LICENSE
+  
+  This software is copyright (c) 2020 by Shlomi Fish ( http://www.shlomifish.org/ ).
+  
+  This is free software; you can redistribute it and/or modify it under
+  the same terms as the Perl 5 programming language system itself.
+  
+  =cut
 ERROR
 
 $fatpacked{"Error/Simple.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ERROR_SIMPLE';
@@ -1058,21 +1232,28 @@ $fatpacked{"Error/Simple.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ER
   # of the Error distribution as a whole is the GPLv1+ and the Artistic
   # licence).
   
+  package Error::Simple;
+  $Error::Simple::VERSION = '0.17029';
   use strict;
   use warnings;
-  
-  use vars qw($VERSION);
-  
-  $VERSION = "0.17022";
   
   use Error;
   
   1;
+  
   __END__
+  
+  =pod
+  
+  =encoding UTF-8
   
   =head1 NAME
   
   Error::Simple - the simple error sub-class of Error
+  
+  =head1 VERSION
+  
+  version 0.17029
   
   =head1 SYNOPSIS
   
@@ -1110,18 +1291,132 @@ $fatpacked{"Error/Simple.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ER
   
   L<Error>
   
+  =for :stopwords cpan testmatrix url bugtracker rt cpants kwalitee diff irc mailto metadata placeholders metacpan
+  
+  =head1 SUPPORT
+  
+  =head2 Websites
+  
+  The following websites have more information about this module, and may be of help to you. As always,
+  in addition to those websites please use your favorite search engine to discover more resources.
+  
+  =over 4
+  
+  =item *
+  
+  MetaCPAN
+  
+  A modern, open-source CPAN search engine, useful to view POD in HTML format.
+  
+  L<https://metacpan.org/release/Error>
+  
+  =item *
+  
+  Search CPAN
+  
+  The default CPAN search engine, useful to view POD in HTML format.
+  
+  L<http://search.cpan.org/dist/Error>
+  
+  =item *
+  
+  RT: CPAN's Bug Tracker
+  
+  The RT ( Request Tracker ) website is the default bug/issue tracking system for CPAN.
+  
+  L<https://rt.cpan.org/Public/Dist/Display.html?Name=Error>
+  
+  =item *
+  
+  CPAN Ratings
+  
+  The CPAN Ratings is a website that allows community ratings and reviews of Perl modules.
+  
+  L<http://cpanratings.perl.org/d/Error>
+  
+  =item *
+  
+  CPANTS
+  
+  The CPANTS is a website that analyzes the Kwalitee ( code metrics ) of a distribution.
+  
+  L<http://cpants.cpanauthors.org/dist/Error>
+  
+  =item *
+  
+  CPAN Testers
+  
+  The CPAN Testers is a network of smoke testers who run automated tests on uploaded CPAN distributions.
+  
+  L<http://www.cpantesters.org/distro/E/Error>
+  
+  =item *
+  
+  CPAN Testers Matrix
+  
+  The CPAN Testers Matrix is a website that provides a visual overview of the test results for a distribution on various Perls/platforms.
+  
+  L<http://matrix.cpantesters.org/?dist=Error>
+  
+  =item *
+  
+  CPAN Testers Dependencies
+  
+  The CPAN Testers Dependencies is a website that shows a chart of the test results of all dependencies for a distribution.
+  
+  L<http://deps.cpantesters.org/?module=Error>
+  
+  =back
+  
+  =head2 Bugs / Feature Requests
+  
+  Please report any bugs or feature requests by email to C<bug-error at rt.cpan.org>, or through
+  the web interface at L<https://rt.cpan.org/Public/Bug/Report.html?Queue=Error>. You will be automatically notified of any
+  progress on the request by the system.
+  
+  =head2 Source Code
+  
+  The code is open to the world, and available for you to hack on. Please feel free to browse it and play
+  with it, or whatever. If you want to contribute patches, please send me a diff or prod me to pull
+  from your repository :)
+  
+  L<https://github.com/shlomif/perl-error.pm>
+  
+    git clone git://github.com/shlomif/perl-error.pm.git
+  
+  =head1 AUTHOR
+  
+  Shlomi Fish ( http://www.shlomifish.org/ )
+  
+  =head1 BUGS
+  
+  Please report any bugs or feature requests on the bugtracker website
+  L<https://github.com/shlomif/perl-error.pm/issues>
+  
+  When submitting a bug or request, please include a test-file or a
+  patch to an existing test-file that illustrates the bug or desired
+  feature.
+  
+  =head1 COPYRIGHT AND LICENSE
+  
+  This software is copyright (c) 2020 by Shlomi Fish ( http://www.shlomifish.org/ ).
+  
+  This is free software; you can redistribute it and/or modify it under
+  the same terms as the Perl 5 programming language system itself.
+  
+  =cut
 ERROR_SIMPLE
 
 $fatpacked{"File/Slurper.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'FILE_SLURPER';
   package File::Slurper;
-  $File::Slurper::VERSION = '0.009';
+  $File::Slurper::VERSION = '0.013';
   use strict;
   use warnings;
   
   use Carp 'croak';
   use Exporter 5.57 'import';
   
-  use Encode qw(:fallbacks);
+  use Encode 2.11 qw/FB_CROAK STOP_AT_PARTIAL/;
   use PerlIO::encoding;
   
   our @EXPORT_OK = qw/read_binary read_text read_lines write_binary write_text read_dir/;
@@ -1155,10 +1450,7 @@ $fatpacked{"File/Slurper.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'FI
   	my ($encoding, $crlf) = @_;
   	$crlf = CRLF_DEFAULT if $crlf && $crlf eq 'auto';
   
-  	if ($encoding =~ /^(latin|iso-8859-)1$/i) {
-  		return $crlf ? ':unix:crlf' : ':raw';
-  	}
-  	elsif (HAS_UTF8_STRICT && $encoding =~ /^utf-?8\b/i) {
+  	if (HAS_UTF8_STRICT && $encoding =~ /^utf-?8\b/i) {
   		return $crlf ? ':unix:utf8_strict:crlf' : ':unix:utf8_strict';
   	}
   	else {
@@ -1171,9 +1463,8 @@ $fatpacked{"File/Slurper.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'FI
   	my ($filename, $encoding, $crlf) = @_;
   	$encoding ||= 'utf-8';
   	my $layer = _text_layers($encoding, $crlf);
-  	return read_binary($filename) if $layer eq ':raw';
   
-  	local $PerlIO::encoding::fallback = FB_CROAK;
+  	local $PerlIO::encoding::fallback = STOP_AT_PARTIAL | FB_CROAK;
   	open my $fh, "<$layer", $filename or croak "Couldn't open $filename: $!";
   	return do { local $/; <$fh> };
   }
@@ -1183,7 +1474,7 @@ $fatpacked{"File/Slurper.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'FI
   	$encoding ||= 'utf-8';
   	my $layer = _text_layers($encoding, $crlf);
   
-  	local $PerlIO::encoding::fallback = FB_CROAK;
+  	local $PerlIO::encoding::fallback = STOP_AT_PARTIAL | FB_CROAK;
   	open my $fh, ">$layer", $filename or croak "Couldn't open $filename: $!";
   	print $fh $_[1] or croak "Couldn't write to $filename: $!";
   	close $fh or croak "Couldn't write to $filename: $!";
@@ -1191,7 +1482,11 @@ $fatpacked{"File/Slurper.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'FI
   }
   
   sub write_binary {
-  	return write_text(@_[0,1], 'latin-1');
+  	my $filename = $_[0];
+  	open my $fh, ">:raw", $filename or croak "Couldn't open $filename: $!";
+  	print $fh $_[1] or croak "Couldn't write to $filename: $!";
+  	close $fh or croak "Couldn't write to $filename: $!";
+  	return;
   }
   
   sub read_lines {
@@ -1199,8 +1494,9 @@ $fatpacked{"File/Slurper.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'FI
   	$encoding ||= 'utf-8';
   	my $layer = _text_layers($encoding, $crlf);
   
-  	local $PerlIO::encoding::fallback = FB_CROAK;
+  	local $PerlIO::encoding::fallback = STOP_AT_PARTIAL | FB_CROAK;
   	open my $fh, "<$layer", $filename or croak "Couldn't open $filename: $!";
+  	local $/ = "\n";
   	return <$fh> if $skip_chomp;
   	my @buf = <$fh>;
   	close $fh;
@@ -1230,7 +1526,7 @@ $fatpacked{"File/Slurper.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'FI
   
   =head1 VERSION
   
-  version 0.009
+  version 0.013
   
   =head1 SYNOPSIS
   
@@ -1239,7 +1535,7 @@ $fatpacked{"File/Slurper.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'FI
   
   =head1 DESCRIPTION
   
-  This module provides functions for fast and correct slurping and spewing. All functions are optionally exported.
+  This module provides functions for fast and correct slurping and spewing. All functions are optionally exported. All functions throw exceptions on errors, write functions don't return any meaningful value.
   
   =head1 FUNCTIONS
   
@@ -1253,7 +1549,7 @@ $fatpacked{"File/Slurper.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'FI
   
   =head2 read_lines($filename, $encoding, $crlf, $skip_chomp)
   
-  Reads file C<$filename> into a list/array line-by-line, after decoding from C<$encoding>, optional crlf translation and chomping.
+  Reads file C<$filename> into a list/array line-by-line, after decoding from C<$encoding>, optional crlf translation and chomping. It will always use newline as separator.
   
   =head2 write_text($filename, $content, $encoding, $crlf)
   
@@ -1289,7 +1585,7 @@ $fatpacked{"File/Slurper.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'FI
   
   =item * L<File::Slurp|File::Slurp>
   
-  This is previous generation file slurping module. It has a number of issues, as described L<here|http://blogs.perl.org/users/leon_timmermans/2015/08/fileslurp-is-broken-and-wrong.html>
+  This is a previous generation file slurping module. It has a number of issues, as described L<here|http://blogs.perl.org/users/leon_timmermans/2015/08/fileslurp-is-broken-and-wrong.html>.
   
   =item * L<File::Slurp::Tiny|File::Slurp::Tiny>
   
@@ -9071,7 +9367,11 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   our %github;
   our $EXIT_CODE = 0;
   
-  our @EXPORT = qw( %github set_output set_env debug error warning set_failed command_on_file error_on_file warning_on_file start_group end_group exit_action);
+  our @EXPORT = qw(
+                    %github set_output set_env debug error warning
+                    set_failed error_on_file warning_on_file
+                    start_group end_group exit_action
+                 );
   
   BEGIN {
     for my $k ( keys(%ENV) ) {
@@ -9082,20 +9382,26 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
     }
   }
   
-  use version; our $VERSION = qv('0.1.1.1');
+  use version; our $VERSION = qv('0.1.2');
+  
+  sub _write_to_github_file {
+    my ($github_var, $content) = @_;
+    open(my $fh, '>>', $github{$github_var}) or die "Could not open file ". $github{$github_var} ." $!";
+    say $fh $content;
+    close $fh;
+  }
   
   sub set_output {
     carp "Need name and value" unless @_;
     my ($output_name, $output_value) = @_;
-    $output_value ||='';
-    say "::set-output name=$output_name\::$output_value";
+    $output_value ||=1;
+    _write_to_github_file( 'OUTPUT', "$output_name=$output_value" );
   }
   
   sub set_env {
     my ($env_var_name, $env_var_value) = @_;
-    open(my $fh, '>>', $github{'ENV'}) or die "Could not open file ". $github{'ENV'} ." $!";
-    say $fh "$env_var_name=$env_var_value";
-    close $fh;
+    $env_var_value ||='1';
+    _write_to_github_file( 'ENV', "$env_var_name=$env_var_value" );
   }
   
   sub debug {
@@ -9171,7 +9477,7 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
       use GitHub::Actions;
       use v5.14;
   
-      # %github contains all GITHUB_* environment variables
+      # Imported %github contains all GITHUB_* environment variables
       for my $g (keys %github ) {
          say "GITHUB_$g -> ", $github{$g}
       }
@@ -9183,10 +9489,26 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
       set_env("FOO", "BAR");
   
       # Produces an error and sets exit code to 1
-      error( "FOO has happened" )
+      error( "FOO has happened" );
+  
+      # Error/warning with information on file
+      error_on_file( "There's foo", $file, $line, $col );
+      warning_on_file( "There's bar", $file, $line, $col );
+  
+      # Debugging messages and warnings
+      debug( "Value of FOO is $bar" );
+      warning( "Value of FOO is $bar" );
+  
+      # Start and end group
+      start_group( "Foo" );
+      # do stuff
+      end_group;
   
       # Exits with error if that's the case
       exit_action();
+  
+      # Errors and exits
+      set_failed( "We're doomed" );
   
   Install this module within a GitHub action
   
@@ -9368,7 +9690,7 @@ UTILITY
 
 $fatpacked{"YAML.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAML';
   package YAML;
-  our $VERSION = '1.13';
+  our $VERSION = '1.30';
   
   use YAML::Mo;
   
@@ -9376,8 +9698,18 @@ $fatpacked{"YAML.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAML';
   push @YAML::ISA, 'Exporter';
   our @EXPORT = qw{ Dump Load };
   our @EXPORT_OK = qw{ freeze thaw DumpFile LoadFile Bless Blessed };
+  our (
+      $UseCode, $DumpCode, $LoadCode,
+      $SpecVersion,
+      $UseHeader, $UseVersion, $UseBlock, $UseFold, $UseAliases,
+      $Indent, $SortKeys, $Preserve,
+      $AnchorPrefix, $CompressSeries, $InlineSeries, $Purity,
+      $Stringify, $Numify, $LoadBlessed, $QuoteNumericStrings,
+      $DumperClass, $LoaderClass
+  );
   
   use YAML::Node; # XXX This is a temp fix for Module::Build
+  use Scalar::Util qw/ openhandle /;
   
   # XXX This VALUE nonsense needs to go.
   use constant VALUE => "\x07YAML\x07VALUE\x07";
@@ -9413,7 +9745,7 @@ $fatpacked{"YAML.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAML';
   sub DumpFile {
       my $OUT;
       my $filename = shift;
-      if (ref $filename eq 'GLOB') {
+      if (openhandle $filename) {
           $OUT = $filename;
       }
       else {
@@ -9422,22 +9754,29 @@ $fatpacked{"YAML.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAML';
               ($mode, $filename) = ($1, $2);
           }
           open $OUT, $mode, $filename
-            or YAML::Mo::Object->die('YAML_DUMP_ERR_FILE_OUTPUT', $filename, $!);
+            or YAML::Mo::Object->die('YAML_DUMP_ERR_FILE_OUTPUT', $filename, "$!");
       }
       binmode $OUT, ':utf8';  # if $Config{useperlio} eq 'define';
       local $/ = "\n"; # reset special to "sane"
       print $OUT Dump(@_);
+      unless (ref $filename eq 'GLOB') {
+          close $OUT
+            or do {
+                my $errsav = $!;
+                YAML::Mo::Object->die('YAML_DUMP_ERR_FILE_OUTPUT_CLOSE', $filename, $errsav);
+            }
+      }
   }
   
   sub LoadFile {
       my $IN;
       my $filename = shift;
-      if (ref $filename eq 'GLOB') {
+      if (openhandle $filename) {
           $IN = $filename;
       }
       else {
           open $IN, '<', $filename
-            or YAML::Mo::Object->die('YAML_LOAD_ERR_FILE_INPUT', $filename, $!);
+            or YAML::Mo::Object->die('YAML_LOAD_ERR_FILE_INPUT', $filename, "$!");
       }
       binmode $IN, ':utf8';  # if $Config{useperlio} eq 'define';
       return Load(do { local $/; <$IN> });
@@ -9472,7 +9811,7 @@ YAML
 $fatpacked{"YAML/Any.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAML_ANY';
   use strict; use warnings;
   package YAML::Any;
-  our $VERSION = '1.13';
+  our $VERSION = '1.30';
   
   use Exporter ();
   
@@ -9501,6 +9840,7 @@ $fatpacked{"YAML/Any.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAML_A
   my @load_options = qw(
       UseCode
       LoadCode
+      Preserve
   );
   
   my @implementations = qw(
@@ -9603,6 +9943,9 @@ $fatpacked{"YAML/Dumper.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
   use YAML::Dumper::Base;
   use YAML::Node;
   use YAML::Types;
+  use Scalar::Util qw();
+  use B ();
+  use Carp ();
   
   # Context constants
   use constant KEY       => 3;
@@ -10053,6 +10396,10 @@ $fatpacked{"YAML/Dumper.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
               $self->_emit($eb), last;
           }
           $self->_emit($sf),
+          $self->_emit_number($_[0]),
+          $self->_emit($ef), last
+            if $self->is_literal_number($_[0]);
+          $self->_emit($sf),
           $self->_emit_plain($_[0]),
           $self->_emit($ef), last
             if $self->is_valid_plain($_[0]);
@@ -10071,10 +10418,23 @@ $fatpacked{"YAML/Dumper.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
       return;
   }
   
+  sub is_literal_number {
+      my $self = shift;
+      # Stolen from JSON::Tiny
+      return B::svref_2object(\$_[0])->FLAGS & (B::SVp_IOK | B::SVp_NOK)
+              && 0 + $_[0] eq $_[0];
+  }
+  
+  sub _emit_number {
+      my $self = shift;
+      return $self->_emit_plain($_[0]);
+  }
+  
   # Check whether or not a scalar should be emitted as an plain scalar.
   sub is_valid_plain {
       my $self = shift;
       return 0 unless length $_[0];
+      return 0 if $self->quote_numeric_strings and Scalar::Util::looks_like_number($_[0]);
       # refer to YAML::Loader::parse_inline_simple()
       return 0 if $_[0] =~ /^[\s\{\[\~\`\'\"\!\@\#\>\|\%\&\?\*\^]/;
       return 0 if $_[0] =~ /[\{\[\]\},]/;
@@ -10083,6 +10443,7 @@ $fatpacked{"YAML/Dumper.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
       return 0 if $_[0] =~ /\:(\s|$)/;
       return 0 if $_[0] =~ /[\s\|\>]$/;
       return 0 if $_[0] eq '-';
+      return 0 if $_[0] eq '=';
       return 1;
   }
   
@@ -10176,6 +10537,7 @@ $fatpacked{"YAML/Dumper/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<
   has use_aliases     => default => sub {1};
   has purity          => default => sub {0};
   has stringify       => default => sub {0};
+  has quote_numeric_strings => default => sub {0};
   
   # Properties
   has stream      => default => sub {''};
@@ -10222,6 +10584,8 @@ $fatpacked{"YAML/Dumper/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<
         if defined $YAML::Purity;
       $self->stringify($YAML::Stringify)
         if defined $YAML::Stringify;
+      $self->quote_numeric_strings($YAML::QuoteNumericStrings)
+        if defined $YAML::QuoteNumericStrings;
   }
   
   sub dump {
@@ -10300,11 +10664,9 @@ $fatpacked{"YAML/Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAML
       $error_messages;
   }
   
-  %$error_messages = map {s/^\s+//;$_} split "\n", <<'...';
+  %$error_messages = map {s/^\s+//;s/\\n/\n/;$_} split "\n", <<'...';
   YAML_PARSE_ERR_BAD_CHARS
     Invalid characters in stream. This parser only supports printable ASCII
-  YAML_PARSE_ERR_NO_FINAL_NEWLINE
-    Stream does not end with newline character
   YAML_PARSE_ERR_BAD_MAJOR_VERSION
     Can't parse a %s document with a 1.0 parser
   YAML_PARSE_WARN_BAD_MINOR_VERSION
@@ -10337,6 +10699,8 @@ $fatpacked{"YAML/Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAML
     Can't concatenate to YAML file %s
   YAML_DUMP_ERR_FILE_OUTPUT
     Couldn't open %s for output:\n%s
+  YAML_DUMP_ERR_FILE_OUTPUT_CLOSE
+    Error closing %s:\n%s
   YAML_DUMP_ERR_NO_HEADER
     With UseHeader=0, the node must be a plain hash or array
   YAML_DUMP_WARN_BAD_NODE_TYPE
@@ -10374,7 +10738,7 @@ $fatpacked{"YAML/Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAML
   YAML_LOAD_ERR_BAD_MAP_ELEMENT
     Invalid element in map
   YAML_LOAD_WARN_DUPLICATE_KEY
-    Duplicate map key found. Ignoring.
+    Duplicate map key '%s' found. Ignoring.
   YAML_LOAD_ERR_BAD_SEQ_ELEMENT
     Invalid element in sequence
   YAML_PARSE_ERR_INLINE_MAP
@@ -10467,6 +10831,7 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
   
   use YAML::Loader::Base;
   use YAML::Types;
+  use YAML::Node;
   
   # Context constants
   use constant LEAF       => 1;
@@ -10496,9 +10861,7 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
       $self->line(0);
       $self->die('YAML_PARSE_ERR_BAD_CHARS')
         if $self->stream =~ /$ESCAPE_CHAR/;
-      $self->die('YAML_PARSE_ERR_NO_FINAL_NEWLINE')
-        if length($self->stream) and
-           $self->{stream} !~ s/(.)\n\Z/$1/s;
+      $self->{stream} =~ s/(.)\n\Z/$1/s;
       $self->lines([split /\x0a/, $self->stream, -1]);
       $self->line(1);
       # Throw away any comments or blanks before the header (or start of
@@ -10506,6 +10869,7 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
       $self->_parse_throwaway_comments();
       $self->document(0);
       $self->documents([]);
+      $self->zero_indent([]);
       # Add an "assumed" header if there is no header and the stream is
       # not empty (after initial throwaways).
       if (not $self->eos) {
@@ -10524,17 +10888,25 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
           $self->offset->[0] = -1;
   
           if ($self->lines->[0] =~ /^---\s*(.*)$/) {
-              my @words = split /\s+/, $1;
+              my @words = split /\s/, $1;
               %directives = ();
-              while (@words && $words[0] =~ /^#(\w+):(\S.*)$/) {
-                  my ($key, $value) = ($1, $2);
-                  shift(@words);
-                  if (defined $directives{$key}) {
-                      $self->warn('YAML_PARSE_WARN_MULTIPLE_DIRECTIVES',
-                        $key, $self->document);
-                      next;
+              while (@words) {
+                  if ($words[0] =~ /^#(\w+):(\S.*)$/) {
+                      my ($key, $value) = ($1, $2);
+                      shift(@words);
+                      if (defined $directives{$key}) {
+                          $self->warn('YAML_PARSE_WARN_MULTIPLE_DIRECTIVES',
+                            $key, $self->document);
+                          next;
+                      }
+                      $directives{$key} = $value;
                   }
-                  $directives{$key} = $value;
+                  elsif ($words[0] eq '') {
+                      shift @words;
+                  }
+                  else {
+                      last;
+                  }
               }
               $self->preface(join ' ', @words);
           }
@@ -10573,8 +10945,8 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
       my $self = shift;
       my $preface = $self->preface;
       $self->preface('');
-      my ($node, $type, $indicator, $escape, $chomp) = ('') x 5;
-      my ($anchor, $alias, $explicit, $implicit, $class) = ('') x 5;
+      my ($node, $type, $indicator, $chomp, $parsed_inline) = ('') x 5;
+      my ($anchor, $alias, $explicit, $implicit) = ('') x 4;
       ($anchor, $alias, $explicit, $implicit, $preface) =
         $self->_parse_qualifiers($preface);
       if ($anchor) {
@@ -10582,13 +10954,21 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
       }
       $self->inline('');
       while (length $preface) {
-          my $line = $self->line - 1;
-          if ($preface =~ s/^($FOLD_CHAR|$LIT_CHAR_RX)(-|\+)?\d*\s*//) {
+          if ($preface =~ s/^($FOLD_CHAR|$LIT_CHAR_RX)//) {
               $indicator = $1;
-              $chomp = $2 if defined($2);
+              if ($preface =~ s/^([+-])[0-9]*//) {
+                  $chomp = $1;
+              }
+              elsif ($preface =~ s/^[0-9]+([+-]?)//) {
+                  $chomp = $1;
+              }
+              if ($preface =~ s/^(?:\s+#.*$|\s*)$//) {
+              }
+              else {
+                  $self->die('YAML_PARSE_ERR_TEXT_AFTER_INDICATOR');
+              }
           }
           else {
-              $self->die('YAML_PARSE_ERR_TEXT_AFTER_INDICATOR') if $indicator;
               $self->inline($preface);
               $preface = '';
           }
@@ -10606,6 +10986,7 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
       }
       elsif (length $self->inline) {
           $node = $self->_parse_inline(1, $implicit, $explicit);
+          $parsed_inline = 1;
           if (length $self->inline) {
               $self->die('YAML_PARSE_ERR_SINGLE_LINE');
           }
@@ -10647,17 +11028,7 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
       $#{$self->offset} = $self->level;
   
       if ($explicit) {
-          if ($class) {
-              if (not ref $node) {
-                  my $copy = $node;
-                  undef $node;
-                  $node = \$copy;
-              }
-              CORE::bless $node, $class;
-          }
-          else {
-              $node = $self->_parse_explicit($node, $explicit);
-          }
+          $node = $self->_parse_explicit($node, $explicit) if !$parsed_inline;
       }
       if ($anchor) {
           if (ref($self->anchor2node->{$anchor}) eq 'YAML-anchor2node') {
@@ -10680,7 +11051,6 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
       my ($anchor, $alias, $explicit, $implicit, $token) = ('') x 5;
       $self->inline('');
       while ($preface =~ /^[&*!]/) {
-          my $line = $self->line - 1;
           if ($preface =~ s/^\!(\S+)\s*//) {
               $self->die('YAML_PARSE_ERR_MANY_EXPLICIT') if $explicit;
               $explicit = $1;
@@ -10689,18 +11059,18 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
               $self->die('YAML_PARSE_ERR_MANY_IMPLICIT') if $implicit;
               $implicit = 1;
           }
-          elsif ($preface =~ s/^\&([^ ,:]+)\s*//) {
+          elsif ($preface =~ s/^\&([^ ,:]*)\s*//) {
               $token = $1;
               $self->die('YAML_PARSE_ERR_BAD_ANCHOR')
-                unless $token =~ /^[a-zA-Z0-9]+$/;
+                unless $token =~ /^[a-zA-Z0-9_.\/-]+$/;
               $self->die('YAML_PARSE_ERR_MANY_ANCHOR') if $anchor;
               $self->die('YAML_PARSE_ERR_ANCHOR_ALIAS') if $alias;
               $anchor = $token;
           }
-          elsif ($preface =~ s/^\*([^ ,:]+)\s*//) {
+          elsif ($preface =~ s/^\*([^ ,:]*)\s*//) {
               $token = $1;
               $self->die('YAML_PARSE_ERR_BAD_ALIAS')
-                unless $token =~ /^[a-zA-Z0-9]+$/;
+                unless $token =~ /^[a-zA-Z0-9_.\/-]+$/;
               $self->die('YAML_PARSE_ERR_MANY_ALIAS') if $alias;
               $self->die('YAML_PARSE_ERR_ANCHOR_ALIAS') if $anchor;
               $alias = $token;
@@ -10732,7 +11102,7 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
               $node = \$value;
           }
   
-          if ( length($class) ) {
+          if ( length($class) and $YAML::LoadBlessed ) {
               CORE::bless($node, $class);
           }
   
@@ -10758,13 +11128,16 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
               require YAML::Node;
               return $class->yaml_load(YAML::Node->new($node, $explicit));
           }
-          else {
+          elsif ($YAML::LoadBlessed) {
               if (ref $node) {
                   return CORE::bless $node, $class;
               }
               else {
                   return CORE::bless \$node, $class;
               }
+          }
+          else {
+              return $node;
           }
       }
       elsif (ref $node) {
@@ -10782,7 +11155,7 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
   sub _parse_mapping {
       my $self = shift;
       my ($anchor) = @_;
-      my $mapping = {};
+      my $mapping = $self->preserve ? YAML::Node->new({}) : {};
       $self->anchor2node->{$anchor} = $mapping;
       my $key;
       while (not $self->done and $self->indent == $self->offset->[$self->level]) {
@@ -10794,11 +11167,11 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
               $key = "$key";
           }
           # If "default" key (equals sign)
-          elsif ($self->{content} =~ s/^\=\s*//) {
+          elsif ($self->{content} =~ s/^\=\s*(?=:)//) {
               $key = VALUE;
           }
           # If "comment" key (slash slash)
-          elsif ($self->{content} =~ s/^\=\s*//) {
+          elsif ($self->{content} =~ s/^\=\s*(?=:)//) {
               $key = COMMENT;
           }
           # Regular scalar key:
@@ -10810,15 +11183,21 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
               $self->inline('');
           }
   
-          unless ($self->{content} =~ s/^:\s*//) {
+          unless ($self->{content} =~ s/^:(?:\s+#.*$|\s*)//) {
               $self->die('YAML_LOAD_ERR_BAD_MAP_ELEMENT');
           }
           $self->preface($self->content);
-          my $line = $self->line;
+          my $level = $self->level;
+  
+          # we can get a zero indented sequence, possibly
+          my $zero_indent = $self->zero_indent;
+          $zero_indent->[ $level ] = 0;
           $self->_parse_next_line(COLLECTION);
           my $value = $self->_parse_node();
+          $#$zero_indent = $level;
+  
           if (exists $mapping->{$key}) {
-              $self->warn('YAML_LOAD_WARN_DUPLICATE_KEY');
+              $self->warn('YAML_LOAD_WARN_DUPLICATE_KEY', $key);
           }
           else {
               $mapping->{$key} = $value;
@@ -10838,9 +11217,33 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
               $self->preface(defined($1) ? $1 : '');
           }
           else {
+              if ($self->zero_indent->[ $self->level ]) {
+                  last;
+              }
               $self->die('YAML_LOAD_ERR_BAD_SEQ_ELEMENT');
           }
-          if ($self->preface =~ /^(\s*)(\w.*\:(?: |$).*)$/) {
+  
+          # Check whether the preface looks like a YAML mapping ("key: value").
+          # This is complicated because it has to account for the possibility
+          # that a key is a quoted string, which itself may contain escaped
+          # quotes.
+          my $preface = $self->preface;
+          if ($preface =~ m/^ (\s*) ( - (?: \ .* | $ ) ) /x) {
+              $self->indent($self->offset->[$self->level] + 2 + length($1));
+              $self->content($2);
+              $self->level($self->level + 1);
+              $self->offset->[$self->level] = $self->indent;
+              $self->preface('');
+              push @$seq, $self->_parse_seq('');
+              $self->{level}--;
+              $#{$self->offset} = $self->level;
+          }
+          elsif (
+               $preface =~ /^ (\s*) ((') (?:''|[^'])*? ' \s* \: (?:\ |$).*) $/x or
+               $preface =~ /^ (\s*) ((") (?:\\\\|[^"])*? " \s* \: (?:\ |$).*) $/x or
+               $preface =~ /^ (\s*) (\?.*$)/x or
+               $preface =~ /^ (\s*) ([^'"\s:#&!\[\]\{\},*|>].*\:(\ .*|$))/x
+             ) {
               $self->indent($self->offset->[$self->level] + 2 + length($1));
               $self->content($2);
               $self->level($self->level + 1);
@@ -10908,6 +11311,11 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
               $node = $self->_parse_inline_simple();
           }
           $node = $self->_parse_implicit($node) unless $explicit;
+  
+          if ($self->numify and defined $node and not ref $node and length $node
+              and $node =~ m/\A-?(?:0|[1-9][0-9]*)?(?:\.[0-9]*)?(?:[eE][+-]?[0-9]+)?\z/) {
+              $node += 0;
+          }
       }
       if ($explicit) {
           $node = $self->_parse_explicit($node, $explicit);
@@ -10934,13 +11342,13 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
   
       $self->die('YAML_PARSE_ERR_INLINE_MAP')
         unless $self->{inline} =~ s/^\{\s*//;
-      while (not $self->{inline} =~ s/^\s*\}//) {
+      while (not $self->{inline} =~ s/^\s*\}(\s+#.*$|\s*)//) {
           my $key = $self->_parse_inline();
           $self->die('YAML_PARSE_ERR_INLINE_MAP')
             unless $self->{inline} =~ s/^\: \s*//;
           my $value = $self->_parse_inline();
           if (exists $node->{$key}) {
-              $self->warn('YAML_LOAD_WARN_DUPLICATE_KEY');
+              $self->warn('YAML_LOAD_WARN_DUPLICATE_KEY', $key);
           }
           else {
               $node->{$key} = $value;
@@ -10961,7 +11369,7 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
   
       $self->die('YAML_PARSE_ERR_INLINE_SEQUENCE')
         unless $self->{inline} =~ s/^\[\s*//;
-      while (not $self->{inline} =~ s/^\s*\]//) {
+      while (not $self->{inline} =~ s/^\s*\](\s+#.*$|\s*)//) {
           my $value = $self->_parse_inline();
           push @$node, $value;
           next if $self->inline =~ /^\s*\]/;
@@ -10974,33 +11382,43 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
   # Parse the inline double quoted string.
   sub _parse_inline_double_quoted {
       my $self = shift;
-      my $node;
-      # https://rt.cpan.org/Public/Bug/Display.html?id=90593
-      if ($self->inline =~ /^"((?:(?:\\"|[^"]){0,32766}){0,32766})"\s*(.*)$/) {
-          $node = $1;
-          $self->inline($2);
-          $node =~ s/\\"/"/g;
+      my $inline = $self->inline;
+      if ($inline =~ s/^"//) {
+          my $node = '';
+  
+          while ($inline =~ s/^(\\.|[^"\\]+)//) {
+              my $capture = $1;
+              $capture =~ s/^\\"/"/;
+              $node .= $capture;
+              last unless length $inline;
+          }
+          if ($inline =~ s/^"(?:\s+#.*|\s*)//) {
+              $self->inline($inline);
+              return $node;
+          }
       }
-      else {
-          $self->die('YAML_PARSE_ERR_BAD_DOUBLE');
-      }
-      return $node;
+      $self->die('YAML_PARSE_ERR_BAD_DOUBLE');
   }
   
   
   # Parse the inline single quoted string.
   sub _parse_inline_single_quoted {
       my $self = shift;
-      my $node;
-      if ($self->inline =~ /^'((?:(?:''|[^']){0,32766}){0,32766})'\s*(.*)$/) {
-          $node = $1;
-          $self->inline($2);
-          $node =~ s/''/'/g;
+      my $inline = $self->inline;
+      if ($inline =~ s/^'//) {
+          my $node = '';
+          while ($inline =~ s/^(''|[^']+)//) {
+              my $capture = $1;
+              $capture =~ s/^''/'/;
+              $node .= $capture;
+              last unless length $inline;
+          }
+          if ($inline =~ s/^'(?:\s+#.*|\s*)//) {
+              $self->inline($inline);
+              return $node;
+          }
       }
-      else {
-          $self->die('YAML_PARSE_ERR_BAD_SINGLE');
-      }
-      return $node;
+      $self->die('YAML_PARSE_ERR_BAD_SINGLE');
   }
   
   # Parse the inline unquoted string and do implicit typing.
@@ -11020,6 +11438,9 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
   sub _parse_implicit {
       my $self = shift;
       my ($value) = @_;
+      # remove trailing comments and whitespace
+      $value =~ s/^#.*$//;
+      $value =~ s/\s+#.*$//;
       $value =~ s/\s*$//;
       return $value if $value eq '';
       return undef if $value =~ /^~$/;
@@ -11092,18 +11513,23 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
       $self->die('YAML_EMIT_ERR_BAD_LEVEL') unless defined $offset;
       shift @{$self->lines};
       $self->eos($self->{done} = not @{$self->lines});
-      return if $self->eos;
+      if ($self->eos) {
+          $self->offset->[$level + 1] = $offset + 1;
+          return;
+      }
       $self->{line}++;
   
       # Determine the offset for a new leaf node
+      # TODO
       if ($self->preface =~
-          qr/(?:^|\s)(?:$FOLD_CHAR|$LIT_CHAR_RX)(?:-|\+)?(\d*)\s*$/
+          qr/(?:^|\s)(?:$FOLD_CHAR|$LIT_CHAR_RX)(?:[+-]([0-9]*)|([0-9]*)[+-]?)(?:\s+#.*|\s*)$/
          ) {
+          my $explicit_indent = defined $1 ? $1 : defined $2 ? $2 : '';
           $self->die('YAML_PARSE_ERR_ZERO_INDENT')
-            if length($1) and $1 == 0;
+            if length($explicit_indent) and $explicit_indent == 0;
           $type = LEAF;
-          if (length($1)) {
-              $self->offset->[$level + 1] = $offset + $1;
+          if (length($explicit_indent)) {
+              $self->offset->[$level + 1] = $offset + $explicit_indent;
           }
           else {
               # First get rid of any comments.
@@ -11128,9 +11554,21 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
       elsif ($type == COLLECTION and
              $self->preface =~ /^(\s*(\!\S*|\&\S+))*\s*$/) {
           $self->_parse_throwaway_comments();
+          my $zero_indent = $self->zero_indent;
           if ($self->eos) {
               $self->offset->[$level+1] = $offset + 1;
               return;
+          }
+          elsif (
+              defined $zero_indent->[ $level ]
+              and not $zero_indent->[ $level ]
+              and $self->lines->[0] =~ /^( {$offset,})-(?: |$)/
+          ) {
+              my $new_offset = length($1);
+              $self->offset->[$level+1] = $new_offset;
+              if ($new_offset == $offset) {
+                  $zero_indent->[ $level+1 ] = 1;
+              }
           }
           else {
               $self->lines->[0] =~ /^( *)\S/ or
@@ -11146,12 +11584,22 @@ $fatpacked{"YAML/Loader.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAM
       }
   
       if ($type == LEAF) {
-          while (@{$self->lines} and
+          if (@{$self->lines} and
                  $self->lines->[0] =~ m{^( *)(\#)} and
                  length($1) < $offset
                 ) {
-              shift @{$self->lines};
-              $self->{line}++;
+              if ( length($1) < $offset) {
+                  shift @{$self->lines};
+                  $self->{line}++;
+                  # every comment after that is also thrown away regardless
+                  # of identation
+                  while (@{$self->lines} and
+                         $self->lines->[0] =~ m{^( *)(\#)}
+                        ) {
+                      shift @{$self->lines};
+                      $self->{line}++;
+                  }
+              }
           }
           $self->eos($self->{done} = not @{$self->lines});
       }
@@ -11223,6 +11671,7 @@ $fatpacked{"YAML/Loader/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<
   use YAML::Mo;
   
   has load_code     => default => sub {0};
+  has preserve      => default => sub {0};
   has stream        => default => sub {''};
   has document      => default => sub {0};
   has line          => default => sub {0};
@@ -11239,11 +11688,15 @@ $fatpacked{"YAML/Loader/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<
   has major_version => default => sub {0};
   has minor_version => default => sub {0};
   has inline        => default => sub {''};
+  has numify        => default => sub {0};
+  has zero_indent   => default => sub {[]};
   
   sub set_global_options {
       my $self = shift;
       $self->load_code($YAML::LoadCode || $YAML::UseCode)
         if defined $YAML::LoadCode or defined $YAML::UseCode;
+      $self->preserve($YAML::Preserve) if defined $YAML::Preserve;
+      $self->numify($YAML::Numify) if defined $YAML::Numify;
   }
   
   sub load {
@@ -11304,11 +11757,11 @@ $fatpacked{"YAML/Marshall.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'Y
 YAML_MARSHALL
 
 $fatpacked{"YAML/Mo.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAML_MO';
-  package YAML::Mo; $VERSION = '0.88';
+  package YAML::Mo;
   # use Mo qw[builder default import];
   #   The following line of code was produced from the previous line by
-  #   Mo::Inline version 0.31
-  no warnings;my$M=__PACKAGE__.'::';*{$M.Object::new}=sub{bless{@_[1..$#_]},$_[0]};*{$M.import}=sub{import warnings;$^H|=1538;my($P,%e,%o)=caller.'::';shift;eval"no Mo::$_",&{$M.$_.::e}($P,\%e,\%o,\@_)for@_;return if$e{M};%e=(extends,sub{eval"no $_[0]()";@{$P.ISA}=$_[0]},has,sub{my$n=shift;my$m=sub{$#_?$_[0]{$n}=$_[1]:$_[0]{$n}};$m=$o{$_}->($m,$n,@_)for sort keys%o;*{$P.$n}=$m},%e,);*{$P.$_}=$e{$_}for keys%e;@{$P.ISA}=$M.Object};*{$M.'builder::e'}=sub{my($P,$e,$o)=@_;$o->{builder}=sub{my($m,$n,%a)=@_;my$b=$a{builder}or return$m;sub{$#_?$m->(@_):!exists$_[0]{$n}?$_[0]{$n}=$_[0]->$b:$m->(@_)}}};*{$M.'default::e'}=sub{my($P,$e,$o)=@_;$o->{default}=sub{my($m,$n,%a)=@_;$a{default}or return$m;sub{$#_?$m->(@_):!exists$_[0]{$n}?$_[0]{$n}=$a{default}->(@_):$m->(@_)}}};my$i=\&import;*{$M.import}=sub{(@_==2 and not $_[1])?pop@_:@_==1?push@_,grep!/import/,@f:();goto&$i};@f=qw[builder default import];use strict;use warnings;
+  #   Mo::Inline version 0.4
+  no warnings;my$M=__PACKAGE__.'::';*{$M.Object::new}=sub{my$c=shift;my$s=bless{@_},$c;my%n=%{$c.'::'.':E'};map{$s->{$_}=$n{$_}->()if!exists$s->{$_}}keys%n;$s};*{$M.import}=sub{import warnings;$^H|=1538;my($P,%e,%o)=caller.'::';shift;eval"no Mo::$_",&{$M.$_.::e}($P,\%e,\%o,\@_)for@_;return if$e{M};%e=(extends,sub{eval"no $_[0]()";@{$P.ISA}=$_[0]},has,sub{my$n=shift;my$m=sub{$#_?$_[0]{$n}=$_[1]:$_[0]{$n}};@_=(default,@_)if!($#_%2);$m=$o{$_}->($m,$n,@_)for sort keys%o;*{$P.$n}=$m},%e,);*{$P.$_}=$e{$_}for keys%e;@{$P.ISA}=$M.Object};*{$M.'builder::e'}=sub{my($P,$e,$o)=@_;$o->{builder}=sub{my($m,$n,%a)=@_;my$b=$a{builder}or return$m;my$i=exists$a{lazy}?$a{lazy}:!${$P.':N'};$i or ${$P.':E'}{$n}=\&{$P.$b}and return$m;sub{$#_?$m->(@_):!exists$_[0]{$n}?$_[0]{$n}=$_[0]->$b:$m->(@_)}}};*{$M.'default::e'}=sub{my($P,$e,$o)=@_;$o->{default}=sub{my($m,$n,%a)=@_;exists$a{default}or return$m;my($d,$r)=$a{default};my$g='HASH'eq($r=ref$d)?sub{+{%$d}}:'ARRAY'eq$r?sub{[@$d]}:'CODE'eq$r?$d:sub{$d};my$i=exists$a{lazy}?$a{lazy}:!${$P.':N'};$i or ${$P.':E'}{$n}=$g and return$m;sub{$#_?$m->(@_):!exists$_[0]{$n}?$_[0]{$n}=$g->(@_):$m->(@_)}}};my$i=\&import;*{$M.import}=sub{(@_==2 and not$_[1])?pop@_:@_==1?push@_,grep!/import/,@f:();goto&$i};@f=qw[builder default import];use strict;use warnings;
   
   our $DumperModule = 'Data::Dumper';
   
@@ -11731,7 +12184,9 @@ $fatpacked{"YAML/Types.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAML
       }
       no strict 'refs';
       if (exists $node->{SCALAR}) {
-          *{"${package}::$name"} = \$node->{SCALAR};
+          if ($YAML::LoadBlessed and $loader->load_code) {
+              *{"${package}::$name"} = \$node->{SCALAR};
+          }
           delete $node->{SCALAR};
       }
       for my $elem (qw(ARRAY HASH CODE IO)) {
@@ -11741,7 +12196,9 @@ $fatpacked{"YAML/Types.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAML
                   delete $node->{IO};
                   next;
               }
-              *{"${package}::$name"} = $node->{$elem};
+              if ($YAML::LoadBlessed and $loader->load_code) {
+                  *{"${package}::$name"} = $node->{$elem};
+              }
               delete $node->{$elem};
           }
       }
@@ -11769,7 +12226,7 @@ $fatpacked{"YAML/Types.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAML
       }
       else {
           bless $value, "CODE" if $class;
-          eval { use B::Deparse };
+          eval { require B::Deparse };
           return if $@;
           my $deparse = B::Deparse->new();
           eval {
@@ -11798,12 +12255,12 @@ $fatpacked{"YAML/Types.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAML
               return sub {};
           }
           else {
-              CORE::bless $code, $class if $class;
+              CORE::bless $code, $class if ($class and $YAML::LoadBlessed);
               return $code;
           }
       }
       else {
-          return CORE::bless sub {}, $class if $class;
+          return CORE::bless sub {}, $class if ($class and $YAML::LoadBlessed);
           return sub {};
       }
   }
@@ -11854,13 +12311,14 @@ $fatpacked{"YAML/Types.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YAML
   sub yaml_load {
       my $self = shift;
       my ($node, $class) = @_;
-      return qr{$node} unless $node =~ /^\(\?([\^\-xism]*):(.*)\)\z/s;
+      return qr{$node} unless $node =~ /^\(\?([\^\-uxism]*):(.*)\)\z/s;
       my ($flags, $re) = ($1, $2);
       $flags =~ s/-.*//;
       $flags =~ s/^\^//;
+      $flags =~ tr/u//d;
       my $sub = _QR_TYPES->{$flags} || sub { qr{$_[0]} };
       my $qr = &$sub($re);
-      bless $qr, $class if length $class;
+      bless $qr, $class if (length $class and $YAML::LoadBlessed);
       return $qr;
   }
   
@@ -12697,692 +13155,9 @@ $fatpacked{"private-Error.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'P
   =cut
 PRIVATE-ERROR
 
-$fatpacked{"x86_64-linux/List/Util.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'X86_64-LINUX_LIST_UTIL';
-  # Copyright (c) 1997-2009 Graham Barr <gbarr@pobox.com>. All rights reserved.
-  # This program is free software; you can redistribute it and/or
-  # modify it under the same terms as Perl itself.
-  #
-  # Maintained since 2013 by Paul Evans <leonerd@leonerd.org.uk>
-  
-  package List::Util;
-  
-  use strict;
-  use warnings;
-  require Exporter;
-  
-  our @ISA        = qw(Exporter);
-  our @EXPORT_OK  = qw(
-    all any first min max minstr maxstr none notall product reduce sum sum0 shuffle uniq uniqnum uniqstr
-    pairs unpairs pairkeys pairvalues pairmap pairgrep pairfirst
-  );
-  our $VERSION    = "1.47";
-  our $XS_VERSION = $VERSION;
-  $VERSION    = eval $VERSION;
-  
-  require XSLoader;
-  XSLoader::load('List::Util', $XS_VERSION);
-  
-  sub import
-  {
-    my $pkg = caller;
-  
-    # (RT88848) Touch the caller's $a and $b, to avoid the warning of
-    #   Name "main::a" used only once: possible typo" warning
-    no strict 'refs';
-    ${"${pkg}::a"} = ${"${pkg}::a"};
-    ${"${pkg}::b"} = ${"${pkg}::b"};
-  
-    goto &Exporter::import;
-  }
-  
-  # For objects returned by pairs()
-  sub List::Util::_Pair::key   { shift->[0] }
-  sub List::Util::_Pair::value { shift->[1] }
-  
-  =head1 NAME
-  
-  List::Util - A selection of general-utility list subroutines
-  
-  =head1 SYNOPSIS
-  
-      use List::Util qw(
-        reduce any all none notall first
-  
-        max maxstr min minstr product sum sum0
-  
-        pairs unpairs pairkeys pairvalues pairfirst pairgrep pairmap
-  
-        shuffle uniq uniqnum uniqstr
-      );
-  
-  =head1 DESCRIPTION
-  
-  C<List::Util> contains a selection of subroutines that people have expressed
-  would be nice to have in the perl core, but the usage would not really be high
-  enough to warrant the use of a keyword, and the size so small such that being
-  individual extensions would be wasteful.
-  
-  By default C<List::Util> does not export any subroutines.
-  
-  =cut
-  
-  =head1 LIST-REDUCTION FUNCTIONS
-  
-  The following set of functions all reduce a list down to a single value.
-  
-  =cut
-  
-  =head2 reduce
-  
-      $result = reduce { BLOCK } @list
-  
-  Reduces C<@list> by calling C<BLOCK> in a scalar context multiple times,
-  setting C<$a> and C<$b> each time. The first call will be with C<$a> and C<$b>
-  set to the first two elements of the list, subsequent calls will be done by
-  setting C<$a> to the result of the previous call and C<$b> to the next element
-  in the list.
-  
-  Returns the result of the last call to the C<BLOCK>. If C<@list> is empty then
-  C<undef> is returned. If C<@list> only contains one element then that element
-  is returned and C<BLOCK> is not executed.
-  
-  The following examples all demonstrate how C<reduce> could be used to implement
-  the other list-reduction functions in this module. (They are not in fact
-  implemented like this, but instead in a more efficient manner in individual C
-  functions).
-  
-      $foo = reduce { defined($a)            ? $a :
-                      $code->(local $_ = $b) ? $b :
-                                               undef } undef, @list # first
-  
-      $foo = reduce { $a > $b ? $a : $b } 1..10       # max
-      $foo = reduce { $a gt $b ? $a : $b } 'A'..'Z'   # maxstr
-      $foo = reduce { $a < $b ? $a : $b } 1..10       # min
-      $foo = reduce { $a lt $b ? $a : $b } 'aa'..'zz' # minstr
-      $foo = reduce { $a + $b } 1 .. 10               # sum
-      $foo = reduce { $a . $b } @bar                  # concat
-  
-      $foo = reduce { $a || $code->(local $_ = $b) } 0, @bar   # any
-      $foo = reduce { $a && $code->(local $_ = $b) } 1, @bar   # all
-      $foo = reduce { $a && !$code->(local $_ = $b) } 1, @bar  # none
-      $foo = reduce { $a || !$code->(local $_ = $b) } 0, @bar  # notall
-         # Note that these implementations do not fully short-circuit
-  
-  If your algorithm requires that C<reduce> produce an identity value, then make
-  sure that you always pass that identity value as the first argument to prevent
-  C<undef> being returned
-  
-    $foo = reduce { $a + $b } 0, @values;             # sum with 0 identity value
-  
-  The above example code blocks also suggest how to use C<reduce> to build a
-  more efficient combined version of one of these basic functions and a C<map>
-  block. For example, to find the total length of the all the strings in a list,
-  we could use
-  
-      $total = sum map { length } @strings;
-  
-  However, this produces a list of temporary integer values as long as the
-  original list of strings, only to reduce it down to a single value again. We
-  can compute the same result more efficiently by using C<reduce> with a code
-  block that accumulates lengths by writing this instead as:
-  
-      $total = reduce { $a + length $b } 0, @strings
-  
-  The remaining list-reduction functions are all specialisations of this generic
-  idea.
-  
-  =head2 any
-  
-      my $bool = any { BLOCK } @list;
-  
-  I<Since version 1.33.>
-  
-  Similar to C<grep> in that it evaluates C<BLOCK> setting C<$_> to each element
-  of C<@list> in turn. C<any> returns true if any element makes the C<BLOCK>
-  return a true value. If C<BLOCK> never returns true or C<@list> was empty then
-  it returns false.
-  
-  Many cases of using C<grep> in a conditional can be written using C<any>
-  instead, as it can short-circuit after the first true result.
-  
-      if( any { length > 10 } @strings ) {
-          # at least one string has more than 10 characters
-      }
-  
-  =head2 all
-  
-      my $bool = all { BLOCK } @list;
-  
-  I<Since version 1.33.>
-  
-  Similar to L</any>, except that it requires all elements of the C<@list> to
-  make the C<BLOCK> return true. If any element returns false, then it returns
-  false. If the C<BLOCK> never returns false or the C<@list> was empty then it
-  returns true.
-  
-  =head2 none
-  
-  =head2 notall
-  
-      my $bool = none { BLOCK } @list;
-  
-      my $bool = notall { BLOCK } @list;
-  
-  I<Since version 1.33.>
-  
-  Similar to L</any> and L</all>, but with the return sense inverted. C<none>
-  returns true only if no value in the C<@list> causes the C<BLOCK> to return
-  true, and C<notall> returns true only if not all of the values do.
-  
-  =head2 first
-  
-      my $val = first { BLOCK } @list;
-  
-  Similar to C<grep> in that it evaluates C<BLOCK> setting C<$_> to each element
-  of C<@list> in turn. C<first> returns the first element where the result from
-  C<BLOCK> is a true value. If C<BLOCK> never returns true or C<@list> was empty
-  then C<undef> is returned.
-  
-      $foo = first { defined($_) } @list    # first defined value in @list
-      $foo = first { $_ > $value } @list    # first value in @list which
-                                            # is greater than $value
-  
-  =head2 max
-  
-      my $num = max @list;
-  
-  Returns the entry in the list with the highest numerical value. If the list is
-  empty then C<undef> is returned.
-  
-      $foo = max 1..10                # 10
-      $foo = max 3,9,12               # 12
-      $foo = max @bar, @baz           # whatever
-  
-  =head2 maxstr
-  
-      my $str = maxstr @list;
-  
-  Similar to L</max>, but treats all the entries in the list as strings and
-  returns the highest string as defined by the C<gt> operator. If the list is
-  empty then C<undef> is returned.
-  
-      $foo = maxstr 'A'..'Z'          # 'Z'
-      $foo = maxstr "hello","world"   # "world"
-      $foo = maxstr @bar, @baz        # whatever
-  
-  =head2 min
-  
-      my $num = min @list;
-  
-  Similar to L</max> but returns the entry in the list with the lowest numerical
-  value. If the list is empty then C<undef> is returned.
-  
-      $foo = min 1..10                # 1
-      $foo = min 3,9,12               # 3
-      $foo = min @bar, @baz           # whatever
-  
-  =head2 minstr
-  
-      my $str = minstr @list;
-  
-  Similar to L</min>, but treats all the entries in the list as strings and
-  returns the lowest string as defined by the C<lt> operator. If the list is
-  empty then C<undef> is returned.
-  
-      $foo = minstr 'A'..'Z'          # 'A'
-      $foo = minstr "hello","world"   # "hello"
-      $foo = minstr @bar, @baz        # whatever
-  
-  =head2 product
-  
-      my $num = product @list;
-  
-  I<Since version 1.35.>
-  
-  Returns the numerical product of all the elements in C<@list>. If C<@list> is
-  empty then C<1> is returned.
-  
-      $foo = product 1..10            # 3628800
-      $foo = product 3,9,12           # 324
-  
-  =head2 sum
-  
-      my $num_or_undef = sum @list;
-  
-  Returns the numerical sum of all the elements in C<@list>. For backwards
-  compatibility, if C<@list> is empty then C<undef> is returned.
-  
-      $foo = sum 1..10                # 55
-      $foo = sum 3,9,12               # 24
-      $foo = sum @bar, @baz           # whatever
-  
-  =head2 sum0
-  
-      my $num = sum0 @list;
-  
-  I<Since version 1.26.>
-  
-  Similar to L</sum>, except this returns 0 when given an empty list, rather
-  than C<undef>.
-  
-  =cut
-  
-  =head1 KEY/VALUE PAIR LIST FUNCTIONS
-  
-  The following set of functions, all inspired by L<List::Pairwise>, consume an
-  even-sized list of pairs. The pairs may be key/value associations from a hash,
-  or just a list of values. The functions will all preserve the original ordering
-  of the pairs, and will not be confused by multiple pairs having the same "key"
-  value - nor even do they require that the first of each pair be a plain string.
-  
-  B<NOTE>: At the time of writing, the following C<pair*> functions that take a
-  block do not modify the value of C<$_> within the block, and instead operate
-  using the C<$a> and C<$b> globals instead. This has turned out to be a poor
-  design, as it precludes the ability to provide a C<pairsort> function. Better
-  would be to pass pair-like objects as 2-element array references in C<$_>, in
-  a style similar to the return value of the C<pairs> function. At some future
-  version this behaviour may be added.
-  
-  Until then, users are alerted B<NOT> to rely on the value of C<$_> remaining
-  unmodified between the outside and the inside of the control block. In
-  particular, the following example is B<UNSAFE>:
-  
-   my @kvlist = ...
-  
-   foreach (qw( some keys here )) {
-      my @items = pairgrep { $a eq $_ } @kvlist;
-      ...
-   }
-  
-  Instead, write this using a lexical variable:
-  
-   foreach my $key (qw( some keys here )) {
-      my @items = pairgrep { $a eq $key } @kvlist;
-      ...
-   }
-  
-  =cut
-  
-  =head2 pairs
-  
-      my @pairs = pairs @kvlist;
-  
-  I<Since version 1.29.>
-  
-  A convenient shortcut to operating on even-sized lists of pairs, this function
-  returns a list of C<ARRAY> references, each containing two items from the
-  given list. It is a more efficient version of
-  
-      @pairs = pairmap { [ $a, $b ] } @kvlist
-  
-  It is most convenient to use in a C<foreach> loop, for example:
-  
-      foreach my $pair ( pairs @kvlist ) {
-         my ( $key, $value ) = @$pair;
-         ...
-      }
-  
-  Since version C<1.39> these C<ARRAY> references are blessed objects,
-  recognising the two methods C<key> and C<value>. The following code is
-  equivalent:
-  
-      foreach my $pair ( pairs @kvlist ) {
-         my $key   = $pair->key;
-         my $value = $pair->value;
-         ...
-      }
-  
-  =head2 unpairs
-  
-      my @kvlist = unpairs @pairs
-  
-  I<Since version 1.42.>
-  
-  The inverse function to C<pairs>; this function takes a list of C<ARRAY>
-  references containing two elements each, and returns a flattened list of the
-  two values from each of the pairs, in order. This is notionally equivalent to
-  
-      my @kvlist = map { @{$_}[0,1] } @pairs
-  
-  except that it is implemented more efficiently internally. Specifically, for
-  any input item it will extract exactly two values for the output list; using
-  C<undef> if the input array references are short.
-  
-  Between C<pairs> and C<unpairs>, a higher-order list function can be used to
-  operate on the pairs as single scalars; such as the following near-equivalents
-  of the other C<pair*> higher-order functions:
-  
-      @kvlist = unpairs grep { FUNC } pairs @kvlist
-      # Like pairgrep, but takes $_ instead of $a and $b
-  
-      @kvlist = unpairs map { FUNC } pairs @kvlist
-      # Like pairmap, but takes $_ instead of $a and $b
-  
-  Note however that these versions will not behave as nicely in scalar context.
-  
-  Finally, this technique can be used to implement a sort on a keyvalue pair
-  list; e.g.:
-  
-      @kvlist = unpairs sort { $a->key cmp $b->key } pairs @kvlist
-  
-  =head2 pairkeys
-  
-      my @keys = pairkeys @kvlist;
-  
-  I<Since version 1.29.>
-  
-  A convenient shortcut to operating on even-sized lists of pairs, this function
-  returns a list of the the first values of each of the pairs in the given list.
-  It is a more efficient version of
-  
-      @keys = pairmap { $a } @kvlist
-  
-  =head2 pairvalues
-  
-      my @values = pairvalues @kvlist;
-  
-  I<Since version 1.29.>
-  
-  A convenient shortcut to operating on even-sized lists of pairs, this function
-  returns a list of the the second values of each of the pairs in the given list.
-  It is a more efficient version of
-  
-      @values = pairmap { $b } @kvlist
-  
-  =head2 pairgrep
-  
-      my @kvlist = pairgrep { BLOCK } @kvlist;
-  
-      my $count = pairgrep { BLOCK } @kvlist;
-  
-  I<Since version 1.29.>
-  
-  Similar to perl's C<grep> keyword, but interprets the given list as an
-  even-sized list of pairs. It invokes the C<BLOCK> multiple times, in scalar
-  context, with C<$a> and C<$b> set to successive pairs of values from the
-  C<@kvlist>.
-  
-  Returns an even-sized list of those pairs for which the C<BLOCK> returned true
-  in list context, or the count of the B<number of pairs> in scalar context.
-  (Note, therefore, in scalar context that it returns a number half the size of
-  the count of items it would have returned in list context).
-  
-      @subset = pairgrep { $a =~ m/^[[:upper:]]+$/ } @kvlist
-  
-  As with C<grep> aliasing C<$_> to list elements, C<pairgrep> aliases C<$a> and
-  C<$b> to elements of the given list. Any modifications of it by the code block
-  will be visible to the caller.
-  
-  =head2 pairfirst
-  
-      my ( $key, $val ) = pairfirst { BLOCK } @kvlist;
-  
-      my $found = pairfirst { BLOCK } @kvlist;
-  
-  I<Since version 1.30.>
-  
-  Similar to the L</first> function, but interprets the given list as an
-  even-sized list of pairs. It invokes the C<BLOCK> multiple times, in scalar
-  context, with C<$a> and C<$b> set to successive pairs of values from the
-  C<@kvlist>.
-  
-  Returns the first pair of values from the list for which the C<BLOCK> returned
-  true in list context, or an empty list of no such pair was found. In scalar
-  context it returns a simple boolean value, rather than either the key or the
-  value found.
-  
-      ( $key, $value ) = pairfirst { $a =~ m/^[[:upper:]]+$/ } @kvlist
-  
-  As with C<grep> aliasing C<$_> to list elements, C<pairfirst> aliases C<$a> and
-  C<$b> to elements of the given list. Any modifications of it by the code block
-  will be visible to the caller.
-  
-  =head2 pairmap
-  
-      my @list = pairmap { BLOCK } @kvlist;
-  
-      my $count = pairmap { BLOCK } @kvlist;
-  
-  I<Since version 1.29.>
-  
-  Similar to perl's C<map> keyword, but interprets the given list as an
-  even-sized list of pairs. It invokes the C<BLOCK> multiple times, in list
-  context, with C<$a> and C<$b> set to successive pairs of values from the
-  C<@kvlist>.
-  
-  Returns the concatenation of all the values returned by the C<BLOCK> in list
-  context, or the count of the number of items that would have been returned in
-  scalar context.
-  
-      @result = pairmap { "The key $a has value $b" } @kvlist
-  
-  As with C<map> aliasing C<$_> to list elements, C<pairmap> aliases C<$a> and
-  C<$b> to elements of the given list. Any modifications of it by the code block
-  will be visible to the caller.
-  
-  See L</KNOWN BUGS> for a known-bug with C<pairmap>, and a workaround.
-  
-  =cut
-  
-  =head1 OTHER FUNCTIONS
-  
-  =cut
-  
-  =head2 shuffle
-  
-      my @values = shuffle @values;
-  
-  Returns the values of the input in a random order
-  
-      @cards = shuffle 0..51      # 0..51 in a random order
-  
-  =head2 uniq
-  
-      my @subset = uniq @values
-  
-  I<Since version 1.45.>
-  
-  Filters a list of values to remove subsequent duplicates, as judged by a
-  DWIM-ish string equality or C<undef> test. Preserves the order of unique
-  elements, and retains the first value of any duplicate set.
-  
-      my $count = uniq @values
-  
-  In scalar context, returns the number of elements that would have been
-  returned as a list.
-  
-  The C<undef> value is treated by this function as distinct from the empty
-  string, and no warning will be produced. It is left as-is in the returned
-  list. Subsequent C<undef> values are still considered identical to the first,
-  and will be removed.
-  
-  =head2 uniqnum
-  
-      my @subset = uniqnum @values
-  
-  I<Since version 1.44.>
-  
-  Filters a list of values to remove subsequent duplicates, as judged by a
-  numerical equality test. Preserves the order of unique elements, and retains
-  the first value of any duplicate set.
-  
-      my $count = uniqnum @values
-  
-  In scalar context, returns the number of elements that would have been
-  returned as a list.
-  
-  Note that C<undef> is treated much as other numerical operations treat it; it
-  compares equal to zero but additionally produces a warning if such warnings
-  are enabled (C<use warnings 'uninitialized';>). In addition, an C<undef> in
-  the returned list is coerced into a numerical zero, so that the entire list of
-  values returned by C<uniqnum> are well-behaved as numbers.
-  
-  Note also that multiple IEEE C<NaN> values are treated as duplicates of
-  each other, regardless of any differences in their payloads, and despite
-  the fact that C<< 0+'NaN' == 0+'NaN' >> yields false.
-  
-  =head2 uniqstr
-  
-      my @subset = uniqstr @values
-  
-  I<Since version 1.45.>
-  
-  Filters a list of values to remove subsequent duplicates, as judged by a
-  string equality test. Preserves the order of unique elements, and retains the
-  first value of any duplicate set.
-  
-      my $count = uniqstr @values
-  
-  In scalar context, returns the number of elements that would have been
-  returned as a list.
-  
-  Note that C<undef> is treated much as other string operations treat it; it
-  compares equal to the empty string but additionally produces a warning if such
-  warnings are enabled (C<use warnings 'uninitialized';>). In addition, an
-  C<undef> in the returned list is coerced into an empty string, so that the
-  entire list of values returned by C<uniqstr> are well-behaved as strings.
-  
-  =cut
-  
-  =head1 KNOWN BUGS
-  
-  =head2 RT #95409
-  
-  L<https://rt.cpan.org/Ticket/Display.html?id=95409>
-  
-  If the block of code given to L</pairmap> contains lexical variables that are
-  captured by a returned closure, and the closure is executed after the block
-  has been re-used for the next iteration, these lexicals will not see the
-  correct values. For example:
-  
-   my @subs = pairmap {
-      my $var = "$a is $b";
-      sub { print "$var\n" };
-   } one => 1, two => 2, three => 3;
-  
-   $_->() for @subs;
-  
-  Will incorrectly print
-  
-   three is 3
-   three is 3
-   three is 3
-  
-  This is due to the performance optimisation of using C<MULTICALL> for the code
-  block, which means that fresh SVs do not get allocated for each call to the
-  block. Instead, the same SV is re-assigned for each iteration, and all the
-  closures will share the value seen on the final iteration.
-  
-  To work around this bug, surround the code with a second set of braces. This
-  creates an inner block that defeats the C<MULTICALL> logic, and does get fresh
-  SVs allocated each time:
-  
-   my @subs = pairmap {
-      {
-         my $var = "$a is $b";
-         sub { print "$var\n"; }
-      }
-   } one => 1, two => 2, three => 3;
-  
-  This bug only affects closures that are generated by the block but used
-  afterwards. Lexical variables that are only used during the lifetime of the
-  block's execution will take their individual values for each invocation, as
-  normal.
-  
-  =head2 uniqnum() on oversized bignums
-  
-  Due to the way that C<uniqnum()> compares numbers, it cannot distinguish
-  differences between bignums (especially bigints) that are too large to fit in
-  the native platform types. For example,
-  
-   my $x = Math::BigInt->new( "1" x 100 );
-   my $y = $x + 1;
-  
-   say for uniqnum( $x, $y );
-  
-  Will print just the value of C<$x>, believing that C<$y> is a numerically-
-  equivalent value. This bug does not affect C<uniqstr()>, which will correctly
-  observe that the two values stringify to different strings.
-  
-  =head1 SUGGESTED ADDITIONS
-  
-  The following are additions that have been requested, but I have been reluctant
-  to add due to them being very simple to implement in perl
-  
-    # How many elements are true
-  
-    sub true { scalar grep { $_ } @_ }
-  
-    # How many elements are false
-  
-    sub false { scalar grep { !$_ } @_ }
-  
-  =head1 SEE ALSO
-  
-  L<Scalar::Util>, L<List::MoreUtils>
-  
-  =head1 COPYRIGHT
-  
-  Copyright (c) 1997-2007 Graham Barr <gbarr@pobox.com>. All rights reserved.
-  This program is free software; you can redistribute it and/or
-  modify it under the same terms as Perl itself.
-  
-  Recent additions and current maintenance by
-  Paul Evans, <leonerd@leonerd.org.uk>.
-  
-  =cut
-  
-  1;
-X86_64-LINUX_LIST_UTIL
-
-$fatpacked{"x86_64-linux/List/Util/XS.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'X86_64-LINUX_LIST_UTIL_XS';
-  package List::Util::XS;
-  use strict;
-  use warnings;
-  use List::Util;
-  
-  our $VERSION = "1.47";       # FIXUP
-  $VERSION = eval $VERSION;    # FIXUP
-  
-  1;
-  __END__
-  
-  =head1 NAME
-  
-  List::Util::XS - Indicate if List::Util was compiled with a C compiler
-  
-  =head1 SYNOPSIS
-  
-      use List::Util::XS 1.20;
-  
-  =head1 DESCRIPTION
-  
-  C<List::Util::XS> can be used as a dependency to ensure List::Util was
-  installed using a C compiler and that the XS version is installed.
-  
-  During installation C<$List::Util::XS::VERSION> will be set to
-  C<undef> if the XS was not compiled.
-  
-  Starting with release 1.23_03, Scalar-List-Util is B<always> using
-  the XS implementation, but for backwards compatibility, we still
-  ship the C<List::Util::XS> module which just loads C<List::Util>.
-  
-  =head1 SEE ALSO
-  
-  L<Scalar::Util>, L<List::Util>, L<List::MoreUtils>
-  
-  =head1 COPYRIGHT
-  
-  Copyright (c) 2008 Graham Barr <gbarr@pobox.com>. All rights reserved.
-  This program is free software; you can redistribute it and/or
-  modify it under the same terms as Perl itself.
-  
-  =cut
-X86_64-LINUX_LIST_UTIL_XS
-
 $fatpacked{"x86_64-linux/PerlIO/utf8_strict.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'X86_64-LINUX_PERLIO_UTF8_STRICT';
   package PerlIO::utf8_strict;
-  $PerlIO::utf8_strict::VERSION = '0.006';
+  $PerlIO::utf8_strict::VERSION = '0.009';
   use strict;
   use warnings;
   
@@ -13406,7 +13181,7 @@ $fatpacked{"x86_64-linux/PerlIO/utf8_strict.pm"} = '#line '.(1+__LINE__).' "'.__
   
   =head1 VERSION
   
-  version 0.006
+  version 0.009
   
   =head1 SYNOPSIS
   
@@ -13470,523 +13245,6 @@ $fatpacked{"x86_64-linux/PerlIO/utf8_strict.pm"} = '#line '.(1+__LINE__).' "'.__
   
   =cut
 X86_64-LINUX_PERLIO_UTF8_STRICT
-
-$fatpacked{"x86_64-linux/Scalar/Util.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'X86_64-LINUX_SCALAR_UTIL';
-  # Copyright (c) 1997-2007 Graham Barr <gbarr@pobox.com>. All rights reserved.
-  # This program is free software; you can redistribute it and/or
-  # modify it under the same terms as Perl itself.
-  #
-  # Maintained since 2013 by Paul Evans <leonerd@leonerd.org.uk>
-  
-  package Scalar::Util;
-  
-  use strict;
-  use warnings;
-  require Exporter;
-  
-  our @ISA       = qw(Exporter);
-  our @EXPORT_OK = qw(
-    blessed refaddr reftype weaken unweaken isweak
-  
-    dualvar isdual isvstring looks_like_number openhandle readonly set_prototype
-    tainted
-  );
-  our $VERSION    = "1.47";
-  $VERSION   = eval $VERSION;
-  
-  require List::Util; # List::Util loads the XS
-  List::Util->VERSION( $VERSION ); # Ensure we got the right XS version (RT#100863)
-  
-  our @EXPORT_FAIL;
-  
-  unless (defined &weaken) {
-    push @EXPORT_FAIL, qw(weaken);
-  }
-  unless (defined &isweak) {
-    push @EXPORT_FAIL, qw(isweak isvstring);
-  }
-  unless (defined &isvstring) {
-    push @EXPORT_FAIL, qw(isvstring);
-  }
-  
-  sub export_fail {
-    if (grep { /^(?:weaken|isweak)$/ } @_ ) {
-      require Carp;
-      Carp::croak("Weak references are not implemented in the version of perl");
-    }
-  
-    if (grep { /^isvstring$/ } @_ ) {
-      require Carp;
-      Carp::croak("Vstrings are not implemented in the version of perl");
-    }
-  
-    @_;
-  }
-  
-  # set_prototype has been moved to Sub::Util with a different interface
-  sub set_prototype(&$)
-  {
-    my ( $code, $proto ) = @_;
-    return Sub::Util::set_prototype( $proto, $code );
-  }
-  
-  1;
-  
-  __END__
-  
-  =head1 NAME
-  
-  Scalar::Util - A selection of general-utility scalar subroutines
-  
-  =head1 SYNOPSIS
-  
-      use Scalar::Util qw(blessed dualvar isdual readonly refaddr reftype
-                          tainted weaken isweak isvstring looks_like_number
-                          set_prototype);
-                          # and other useful utils appearing below
-  
-  =head1 DESCRIPTION
-  
-  C<Scalar::Util> contains a selection of subroutines that people have expressed
-  would be nice to have in the perl core, but the usage would not really be high
-  enough to warrant the use of a keyword, and the size would be so small that 
-  being individual extensions would be wasteful.
-  
-  By default C<Scalar::Util> does not export any subroutines.
-  
-  =cut
-  
-  =head1 FUNCTIONS FOR REFERENCES
-  
-  The following functions all perform some useful activity on reference values.
-  
-  =head2 blessed
-  
-      my $pkg = blessed( $ref );
-  
-  If C<$ref> is a blessed reference, the name of the package that it is blessed
-  into is returned. Otherwise C<undef> is returned.
-  
-      $scalar = "foo";
-      $class  = blessed $scalar;           # undef
-  
-      $ref    = [];
-      $class  = blessed $ref;              # undef
-  
-      $obj    = bless [], "Foo";
-      $class  = blessed $obj;              # "Foo"
-  
-  Take care when using this function simply as a truth test (such as in
-  C<if(blessed $ref)...>) because the package name C<"0"> is defined yet false.
-  
-  =head2 refaddr
-  
-      my $addr = refaddr( $ref );
-  
-  If C<$ref> is reference, the internal memory address of the referenced value is
-  returned as a plain integer. Otherwise C<undef> is returned.
-  
-      $addr = refaddr "string";           # undef
-      $addr = refaddr \$var;              # eg 12345678
-      $addr = refaddr [];                 # eg 23456784
-  
-      $obj  = bless {}, "Foo";
-      $addr = refaddr $obj;               # eg 88123488
-  
-  =head2 reftype
-  
-      my $type = reftype( $ref );
-  
-  If C<$ref> is a reference, the basic Perl type of the variable referenced is
-  returned as a plain string (such as C<ARRAY> or C<HASH>). Otherwise C<undef>
-  is returned.
-  
-      $type = reftype "string";           # undef
-      $type = reftype \$var;              # SCALAR
-      $type = reftype [];                 # ARRAY
-  
-      $obj  = bless {}, "Foo";
-      $type = reftype $obj;               # HASH
-  
-  =head2 weaken
-  
-      weaken( $ref );
-  
-  The lvalue C<$ref> will be turned into a weak reference. This means that it
-  will not hold a reference count on the object it references. Also, when the
-  reference count on that object reaches zero, the reference will be set to
-  undef. This function mutates the lvalue passed as its argument and returns no
-  value.
-  
-  This is useful for keeping copies of references, but you don't want to prevent
-  the object being DESTROY-ed at its usual time.
-  
-      {
-        my $var;
-        $ref = \$var;
-        weaken($ref);                     # Make $ref a weak reference
-      }
-      # $ref is now undef
-  
-  Note that if you take a copy of a scalar with a weakened reference, the copy
-  will be a strong reference.
-  
-      my $var;
-      my $foo = \$var;
-      weaken($foo);                       # Make $foo a weak reference
-      my $bar = $foo;                     # $bar is now a strong reference
-  
-  This may be less obvious in other situations, such as C<grep()>, for instance
-  when grepping through a list of weakened references to objects that may have
-  been destroyed already:
-  
-      @object = grep { defined } @object;
-  
-  This will indeed remove all references to destroyed objects, but the remaining
-  references to objects will be strong, causing the remaining objects to never be
-  destroyed because there is now always a strong reference to them in the @object
-  array.
-  
-  =head2 unweaken
-  
-      unweaken( $ref );
-  
-  I<Since version 1.36.>
-  
-  The lvalue C<REF> will be turned from a weak reference back into a normal
-  (strong) reference again. This function mutates the lvalue passed as its
-  argument and returns no value. This undoes the action performed by
-  L</weaken>.
-  
-  This function is slightly neater and more convenient than the
-  otherwise-equivalent code
-  
-      my $tmp = $REF;
-      undef $REF;
-      $REF = $tmp;
-  
-  (because in particular, simply assigning a weak reference back to itself does
-  not work to unweaken it; C<$REF = $REF> does not work).
-  
-  =head2 isweak
-  
-      my $weak = isweak( $ref );
-  
-  Returns true if C<$ref> is a weak reference.
-  
-      $ref  = \$foo;
-      $weak = isweak($ref);               # false
-      weaken($ref);
-      $weak = isweak($ref);               # true
-  
-  B<NOTE>: Copying a weak reference creates a normal, strong, reference.
-  
-      $copy = $ref;
-      $weak = isweak($copy);              # false
-  
-  =head1 OTHER FUNCTIONS
-  
-  =head2 dualvar
-  
-      my $var = dualvar( $num, $string );
-  
-  Returns a scalar that has the value C<$num> in a numeric context and the value
-  C<$string> in a string context.
-  
-      $foo = dualvar 10, "Hello";
-      $num = $foo + 2;                    # 12
-      $str = $foo . " world";             # Hello world
-  
-  =head2 isdual
-  
-      my $dual = isdual( $var );
-  
-  I<Since version 1.26.>
-  
-  If C<$var> is a scalar that has both numeric and string values, the result is
-  true.
-  
-      $foo = dualvar 86, "Nix";
-      $dual = isdual($foo);               # true
-  
-  Note that a scalar can be made to have both string and numeric content through
-  numeric operations:
-  
-      $foo = "10";
-      $dual = isdual($foo);               # false
-      $bar = $foo + 0;
-      $dual = isdual($foo);               # true
-  
-  Note that although C<$!> appears to be a dual-valued variable, it is
-  actually implemented as a magical variable inside the interpreter:
-  
-      $! = 1;
-      print("$!\n");                      # "Operation not permitted"
-      $dual = isdual($!);                 # false
-  
-  You can capture its numeric and string content using:
-  
-      $err = dualvar $!, $!;
-      $dual = isdual($err);               # true
-  
-  =head2 isvstring
-  
-      my $vstring = isvstring( $var );
-  
-  If C<$var> is a scalar which was coded as a vstring, the result is true.
-  
-      $vs   = v49.46.48;
-      $fmt  = isvstring($vs) ? "%vd" : "%s"; #true
-      printf($fmt,$vs);
-  
-  =head2 looks_like_number
-  
-      my $isnum = looks_like_number( $var );
-  
-  Returns true if perl thinks C<$var> is a number. See
-  L<perlapi/looks_like_number>.
-  
-  =head2 openhandle
-  
-      my $fh = openhandle( $fh );
-  
-  Returns C<$fh> itself if C<$fh> may be used as a filehandle and is open, or is
-  is a tied handle. Otherwise C<undef> is returned.
-  
-      $fh = openhandle(*STDIN);           # \*STDIN
-      $fh = openhandle(\*STDIN);          # \*STDIN
-      $fh = openhandle(*NOTOPEN);         # undef
-      $fh = openhandle("scalar");         # undef
-  
-  =head2 readonly
-  
-      my $ro = readonly( $var );
-  
-  Returns true if C<$var> is readonly.
-  
-      sub foo { readonly($_[0]) }
-  
-      $readonly = foo($bar);              # false
-      $readonly = foo(0);                 # true
-  
-  =head2 set_prototype
-  
-      my $code = set_prototype( $code, $prototype );
-  
-  Sets the prototype of the function given by the C<$code> reference, or deletes
-  it if C<$prototype> is C<undef>. Returns the C<$code> reference itself.
-  
-      set_prototype \&foo, '$$';
-  
-  =head2 tainted
-  
-      my $t = tainted( $var );
-  
-  Return true if C<$var> is tainted.
-  
-      $taint = tainted("constant");       # false
-      $taint = tainted($ENV{PWD});        # true if running under -T
-  
-  =head1 DIAGNOSTICS
-  
-  Module use may give one of the following errors during import.
-  
-  =over
-  
-  =item Weak references are not implemented in the version of perl
-  
-  The version of perl that you are using does not implement weak references, to
-  use L</isweak> or L</weaken> you will need to use a newer release of perl.
-  
-  =item Vstrings are not implemented in the version of perl
-  
-  The version of perl that you are using does not implement Vstrings, to use
-  L</isvstring> you will need to use a newer release of perl.
-  
-  =back
-  
-  =head1 KNOWN BUGS
-  
-  There is a bug in perl5.6.0 with UV's that are >= 1<<31. This will
-  show up as tests 8 and 9 of dualvar.t failing
-  
-  =head1 SEE ALSO
-  
-  L<List::Util>
-  
-  =head1 COPYRIGHT
-  
-  Copyright (c) 1997-2007 Graham Barr <gbarr@pobox.com>. All rights reserved.
-  This program is free software; you can redistribute it and/or modify it
-  under the same terms as Perl itself.
-  
-  Additionally L</weaken> and L</isweak> which are
-  
-  Copyright (c) 1999 Tuomas J. Lukka <lukka@iki.fi>. All rights reserved.
-  This program is free software; you can redistribute it and/or modify it
-  under the same terms as perl itself.
-  
-  Copyright (C) 2004, 2008  Matthijs van Duin.  All rights reserved.
-  Copyright (C) 2014 cPanel Inc.  All rights reserved.
-  This program is free software; you can redistribute it and/or modify
-  it under the same terms as Perl itself.
-  
-  =cut
-X86_64-LINUX_SCALAR_UTIL
-
-$fatpacked{"x86_64-linux/Sub/Util.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'X86_64-LINUX_SUB_UTIL';
-  # Copyright (c) 2014 Paul Evans <leonerd@leonerd.org.uk>. All rights reserved.
-  # This program is free software; you can redistribute it and/or
-  # modify it under the same terms as Perl itself.
-  
-  package Sub::Util;
-  
-  use strict;
-  use warnings;
-  
-  require Exporter;
-  
-  our @ISA = qw( Exporter );
-  our @EXPORT_OK = qw(
-    prototype set_prototype
-    subname set_subname
-  );
-  
-  our $VERSION    = "1.47";
-  $VERSION   = eval $VERSION;
-  
-  require List::Util; # as it has the XS
-  List::Util->VERSION( $VERSION ); # Ensure we got the right XS version (RT#100863)
-  
-  =head1 NAME
-  
-  Sub::Util - A selection of utility subroutines for subs and CODE references
-  
-  =head1 SYNOPSIS
-  
-      use Sub::Util qw( prototype set_prototype subname set_subname );
-  
-  =head1 DESCRIPTION
-  
-  C<Sub::Util> contains a selection of utility subroutines that are useful for
-  operating on subs and CODE references.
-  
-  The rationale for inclusion in this module is that the function performs some
-  work for which an XS implementation is essential because it cannot be
-  implemented in Pure Perl, and which is sufficiently-widely used across CPAN
-  that its popularity warrants inclusion in a core module, which this is.
-  
-  =cut
-  
-  =head1 FUNCTIONS
-  
-  =cut
-  
-  =head2 prototype
-  
-      my $proto = prototype( $code )
-  
-  I<Since version 1.40.>
-  
-  Returns the prototype of the given C<$code> reference, if it has one, as a
-  string. This is the same as the C<CORE::prototype> operator; it is included
-  here simply for symmetry and completeness with the other functions.
-  
-  =cut
-  
-  sub prototype
-  {
-    my ( $code ) = @_;
-    return CORE::prototype( $code );
-  }
-  
-  =head2 set_prototype
-  
-      my $code = set_prototype $prototype, $code;
-  
-  I<Since version 1.40.>
-  
-  Sets the prototype of the function given by the C<$code> reference, or deletes
-  it if C<$prototype> is C<undef>. Returns the C<$code> reference itself.
-  
-  I<Caution>: This function takes arguments in a different order to the previous
-  copy of the code from C<Scalar::Util>. This is to match the order of
-  C<set_subname>, and other potential additions in this file. This order has
-  been chosen as it allows a neat and simple chaining of other
-  C<Sub::Util::set_*> functions as might become available, such as:
-  
-   my $code =
-      set_subname   name_here =>
-      set_prototype '&@'      =>
-      set_attribute ':lvalue' =>
-         sub { ...... };
-  
-  =cut
-  
-  =head2 subname
-  
-      my $name = subname( $code )
-  
-  I<Since version 1.40.>
-  
-  Returns the name of the given C<$code> reference, if it has one. Normal named
-  subs will give a fully-qualified name consisting of the package and the
-  localname separated by C<::>. Anonymous code references will give C<__ANON__>
-  as the localname. If a name has been set using L</set_subname>, this name will
-  be returned instead.
-  
-  This function was inspired by C<sub_fullname> from L<Sub::Identify>. The
-  remaining functions that C<Sub::Identify> implements can easily be emulated
-  using regexp operations, such as
-  
-   sub get_code_info { return (subname $_[0]) =~ m/^(.+)::(.+?)$/ }
-   sub sub_name      { return (get_code_info $_[0])[0] }
-   sub stash_name    { return (get_code_info $_[0])[1] }
-  
-  I<Users of Sub::Name beware>: This function is B<not> the same as
-  C<Sub::Name::subname>; it returns the existing name of the sub rather than
-  changing it. To set or change a name, see instead L</set_subname>.
-  
-  =cut
-  
-  =head2 set_subname
-  
-      my $code = set_subname $name, $code;
-  
-  I<Since version 1.40.>
-  
-  Sets the name of the function given by the C<$code> reference. Returns the
-  C<$code> reference itself. If the C<$name> is unqualified, the package of the
-  caller is used to qualify it.
-  
-  This is useful for applying names to anonymous CODE references so that stack
-  traces and similar situations, to give a useful name rather than having the
-  default of C<__ANON__>. Note that this name is only used for this situation;
-  the C<set_subname> will not install it into the symbol table; you will have to
-  do that yourself if required.
-  
-  However, since the name is not used by perl except as the return value of
-  C<caller>, for stack traces or similar, there is no actual requirement that
-  the name be syntactically valid as a perl function name. This could be used to
-  attach extra information that could be useful in debugging stack traces.
-  
-  This function was copied from C<Sub::Name::subname> and renamed to the naming
-  convention of this module.
-  
-  =cut
-  
-  =head1 AUTHOR
-  
-  The general structure of this module was written by Paul Evans
-  <leonerd@leonerd.org.uk>.
-  
-  The XS implementation of L</set_subname> was copied from L<Sub::Name> by
-  Matthijs van Duin <xmath@cpan.org>
-  
-  =cut
-  
-  1;
-X86_64-LINUX_SUB_UTIL
 
 s/^  //mg for values %fatpacked;
 
