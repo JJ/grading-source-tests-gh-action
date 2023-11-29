@@ -13495,7 +13495,7 @@ sub comprueba {
 sub comprueba_caps {
   my $nombre_fichero = shift;
   if ( $nombre_fichero =~ /[A-Z]/ ) {
-     error (sorry( "⚠ $nombre_fichero tiene mayúsculas, no una buena práctica en repos ⚠" ));
+     error (sorry( "⚠ «$nombre_fichero» tiene mayúsculas, no una buena práctica en repos ⚠" ));
   }
 }
 
