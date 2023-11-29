@@ -13395,7 +13395,7 @@ sub objetivo_1 {
                "🗝️ $k no está presente en «iv.yaml»"
              );
   }
-
+  comprueba_caps( $iv->{'entidad'} );
   if ($iv->{'entidad'}) {
     my $repo_files = shift;
     file_present( $iv->{'entidad'}, $repo_files, "Con la entidad" );
@@ -13430,6 +13430,7 @@ sub objetivo_4 {
 
   clave_presente( 'test' );
   file_present( $iv->{'test'}, $repo_files, "Con un fichero de test" );
+  comprueba_caps( $iv->{'test'} );
   README_contiene( "$iv->{'automatizar'}{'orden'} test", $README );
   end_group();
 }
@@ -13448,6 +13449,7 @@ sub objetivo_6 {
   my $repo_files = shift;
   clave_presente( 'CI' );
   file_present( $iv->{'CI'}, $repo_files, "Configuración CI" ) if $iv->{'CI'};
+  comprueba_caps( $iv->{'CI'} );
   end_group();
 }
 
@@ -13487,6 +13489,13 @@ sub comprueba {
     say all_good($bien);
   } else {
     error( sorry( $mal ) );
+  }
+}
+
+sub comprueba_caps {
+  my $nombre_fichero = shift;
+  if ( $nombre_fichero =~ /[A-Z]/ ) {
+     error (sorry( "⚠ $nombre_fichero tiene mayúsculas, no una buena práctica en repos ⚠" ));
   }
 }
 
