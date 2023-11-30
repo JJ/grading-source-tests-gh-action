@@ -211,8 +211,11 @@ sub comprueba {
 
 sub comprueba_caps {
   my $nombre_fichero = shift;
-  if ( $nombre_fichero =~ /[A-Z]/ ) {
-     error (sorry( "⚠ «$nombre_fichero» tiene mayúsculas, no una buena práctica en repos ⚠" ));
+  my @files = (ref($nombre_fichero) eq 'ARRAY')?@$nombre_fichero:($nombre_fichero);
+  for my $file (@files) {
+    if ( $file =~ /[A-Z]/ ) {
+      error (sorry( "⚠ «$file» tiene mayúsculas, no una buena práctica en repos ⚠" ));
+    }
   }
 }
 
