@@ -46,6 +46,7 @@ my $README =  read_text( $readme_file );
 my $iv;
 
 my $file = "is.yaml";
+file_present( $file, \@repo_files, "Fichero metadatos" );
 eval { $iv = LoadFile($file); };
 if ($@) {
   set_failed( sorry( "Hay algún problema leyendo «$file» ⤷ $@" ) );
