@@ -45,11 +45,12 @@ my ($readme_file) = grep( /^README/, @repo_files );
 my $README =  read_text( $readme_file );
 my $iv;
 
-eval { $iv = LoadFile("iv.yaml"); };
+my $file = "is.yaml"
+eval { $iv = LoadFile($ile); };
 if ($@) {
-  set_failed( sorry( "Hay algún problema leyendo «iv.yaml» ⤷ $@" ) );
+  set_failed( sorry( "Hay algún problema leyendo «$file» ⤷ $@" ) );
 } else {
-  say all_good( "Fichero de configuración ⚙ «iv.yaml» encontrado" );
+  say all_good( "Fichero de configuración ⚙ «$file» encontrado" );
 }
 
 objetivo_1( $iv, \@repo_files );
