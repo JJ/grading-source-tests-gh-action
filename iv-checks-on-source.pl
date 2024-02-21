@@ -45,8 +45,8 @@ my ($readme_file) = grep( /^README/, @repo_files );
 my $README =  read_text( $readme_file );
 my $iv;
 
-my $file = "is.yaml"
-eval { $iv = LoadFile($ile); };
+my $file = "is.yaml";
+eval { $iv = LoadFile($file); };
 if ($@) {
   set_failed( sorry( "Hay algún problema leyendo «$file» ⤷ $@" ) );
 } else {
