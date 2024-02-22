@@ -4,11 +4,11 @@ inputs:
   fase:
     description: 'Fichero en el que se ha hecho el PR == fase del proyecto'
     required: true
-    default: 'objetivo-0.md'
-  config-file:
+    default: '0'
+  configfile:
     description: 'Fichero yaml con metadatos que se va a leer'
     required: true
-    default: iv
+    default: 'iv'
 runs:
   using: 'composite'
   steps:
