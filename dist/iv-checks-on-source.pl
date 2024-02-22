@@ -13299,7 +13299,7 @@ use Utility;
 
 # Fase
 my ($fase) = $ENV{'objetivo'};
-my $config_file = $ENV{'config-file'};
+my ($config_file) = $ENV{'config-file'};
 metadatos( $fase );
 
 # Previa
