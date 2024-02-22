@@ -14,10 +14,8 @@ use lib "lib";
 
 use Utility;
 
-say join(%ENV,"\n");
 my $fase = $ENV{'objetivo'};
 my $config_file = $ENV{'CONFIGFILE'};
-say "Trabajando con $fase y $config_file";
 metadatos( $fase );
 
 # Previa
