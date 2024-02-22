@@ -14,7 +14,7 @@ use lib "lib";
 
 use Utility;
 
-# Fase
+say join(%ENV,"\n");
 my ($fase) = $ENV{'objetivo'};
 my ($config_file) = $ENV{'configfile'};
 say "Trabajando con $fase y $config_file";
