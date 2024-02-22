@@ -15,6 +15,7 @@ use lib "lib";
 use Utility;
 
 # Fase
+say %ENV;
 my ($fase) = $ENV{'objetivo'};
 my ($config_file) = $ENV{'config-file'};
 metadatos( $fase );
