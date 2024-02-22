@@ -16,6 +16,7 @@ use Utility;
 
 # Fase
 my ($fase) = $ENV{'objetivo'};
+my $config_file = $ENV{'config-file'};
 metadatos( $fase );
 
 # Previa
@@ -45,7 +46,7 @@ my ($readme_file) = grep( /^README/, @repo_files );
 my $README =  read_text( $readme_file );
 my $iv;
 
-my $file = "is.yaml";
+my $file = "$config_file.yaml";
 file_present( $file, \@repo_files, "Fichero metadatos" );
 eval { $iv = LoadFile($file); };
 if ($@) {
@@ -110,8 +111,8 @@ sub objetivo_1 {
   my $iv = shift;
   for my $k (qw(lenguaje entidad)) {
     comprueba( $iv->{$k},
-               "🗝️ $k está presente en «iv.yaml»",
-               "🗝️ $k no está presente en «iv.yaml»"
+               "🗝️ $k está presente en «$config_file.yaml»",
+               "🗝️ $k no está presente en «$config_file.yaml»"
              );
   }
   comprueba_caps( $iv->{'entidad'} );
