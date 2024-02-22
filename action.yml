@@ -14,3 +14,5 @@ runs:
   steps:
     - run: ${{ github.action_path }}/dist/iv-checks-on-source.pl ${{inputs.fase}}
       shell: bash
+      env:
+        CONFIGFILE: ${{inputs.configfile}}
