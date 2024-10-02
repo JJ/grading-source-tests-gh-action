@@ -13874,7 +13874,7 @@ sub metadatos {
 sub objetivo_0 {
   my @repo_files = @_;
   doing( "🎯 Objetivo 0" );
-  doing( @repo_files );
+  say @repo_files;
   for my $f (qw( README.md .gitignore LICENSE )) {
     if ( grep( $f, @repo_files) )  {
       say all_good( "🗄 $f presente" );
