@@ -8608,12 +8608,13 @@ sub comprueba_caps {
 
 sub file_present {
   my ($file, $ls_files_ref, $name ) = @_;
+  say all_good("Comprobando $file");
   my @files = (ref($file) eq 'ARRAY')?@$file:($file);
   say all_good("Buscando @files en @$ls_files_ref");
   for my $a_file (@files ) {
     comprueba( grep( /$a_file/, @$ls_files_ref ),
-               "Fichero $name → $file presente",
-               "Fichero $name → $file no está presente" );
+               "Fichero $name → $a_file presente",
+               "Fichero $name → $a_file no está presente" );
   }
 
 }
