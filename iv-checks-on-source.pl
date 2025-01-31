@@ -223,8 +223,9 @@ sub comprueba_caps {
 sub file_present {
   my ($file, $ls_files_ref, $name ) = @_;
   my @files = (ref($file) eq 'ARRAY')?@$file:($file);
-  for my $file (@files ) {
-    comprueba( grep( /$file/, @$ls_files_ref ),
+  say all_good("Buscando @files en @$ls_files_ref");
+  for my $a_file (@files ) {
+    comprueba( grep( /$a_file/, @$ls_files_ref ),
                "Fichero $name → $file presente",
                "Fichero $name → $file no está presente" );
   }
