@@ -8543,6 +8543,7 @@ sub objetivo_5 {
   doing( "🎯 Objetivo 5" );
   my $iv = shift;
   my $repo_files = shift;
+  say all_good("Buscando el Dockerfile");
   file_present( 'Dockerfile', $repo_files, "Dockerfile" );
   end_group();
 }
@@ -8608,7 +8609,6 @@ sub comprueba_caps {
 
 sub file_present {
   my ($file, $ls_files_ref, $name ) = @_;
-  say all_good("Comprobando $file");
   my @files = (ref($file) eq 'ARRAY')?@$file:($file);
   say all_good("Buscando @files en @$ls_files_ref");
   for my $a_file (@files ) {
