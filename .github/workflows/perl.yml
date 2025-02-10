@@ -18,10 +18,10 @@ jobs:
       id: cache-cpanfile
       uses: actions/cache@v4
       with:
-        path: ~/perl5
-        key: ${{ runner.os }}-cpanfile
+        path: /usr/local/share/perl/5.38.2
+        key: ${{ runner.os }}-cpanfile-sudo
     - name: Install dependencies
       if: steps.cache-cpanfiles.outputs.cache-hit != 'true'
-      run: cpanm -v --installdeps .
+      run: cpanm --sudo -v --installdeps .
     - name: Test perl
-      run: prove -I ~/perl5/lib t/
+      run: prove
