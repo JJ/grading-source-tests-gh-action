@@ -27,4 +27,13 @@ sub comprueba_con_mensaje {
   }
 }
 
+sub README_contiene_con_mensaje {
+  my ($cadena, $README) = @_;
+  comprueba_con_mensaje( index( $README, $cadena ) >= 0,
+                         "El README contiene «$cadena»",
+                         "El README no contiene «$cadena»"
+                       );
+}
+
+
 "Yay"

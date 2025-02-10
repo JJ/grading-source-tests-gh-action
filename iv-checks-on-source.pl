@@ -132,7 +132,7 @@ sub objetivo_3 {
   comprueba_con_mensaje(  $iv->{'automatizar'}{'fichero'}, "🗝️  «automatizar→fichero» presente", "Falta clave «automatizar→fichero»" );
   file_present( $iv->{'automatizar'}{'fichero'}, $repo_files, "Con el fichero de tareas" );
   comprueba_con_mensaje(  $iv->{'automatizar'}{'orden'}, "🗝️ «automatizar→orden» presente", "Falta clave «automatizar→orden»" );
-  README_contiene( "$iv->{'automatizar'}{'orden'} check", $README );
+  README_contiene_con_mensaje( "$iv->{'automatizar'}{'orden'} check", $README );
   set_output( 'ORDEN', $iv->{'automatizar'}{'orden'} );
   set_env( 'ORDEN', $iv->{'automatizar'}{'orden'} );
   end_group();
@@ -147,7 +147,7 @@ sub objetivo_4 {
   clave_presente( $iv,  'test' );
   file_present( $iv->{'test'}, $repo_files, "Con un fichero de test" );
   comprueba_caps( $iv->{'test'} );
-  README_contiene( "$iv->{'automatizar'}{'orden'} test", $README );
+  README_contiene_con_mensaje( "$iv->{'automatizar'}{'orden'} test", $README );
   end_group();
 }
 
@@ -222,15 +222,6 @@ sub file_present {
                "Fichero $name → $a_file no está presente" );
   }
 
-}
-
-sub README_contiene {
-  my ($cadena, $README) = @_;
-  if ( index( $README, $cadena ) >= 0 ) {
-    say all_good( "El README contiene «$cadena»");
-  } else {
-    error (sorry( "El README no contiene «$cadena»" ));
-  }
 }
 
 sub clave_presente {
