@@ -144,7 +144,7 @@ sub objetivo_4 {
   my $README = shift;
   my $repo_files = shift;
 
-  clave_presente( 'test' );
+  clave_presente( $iv,  'test' );
   file_present( $iv->{'test'}, $repo_files, "Con un fichero de test" );
   comprueba_caps( $iv->{'test'} );
   README_contiene( "$iv->{'automatizar'}{'orden'} test", $README );
@@ -164,7 +164,7 @@ sub objetivo_6 {
   doing( "🎯 Objetivo 6" );
   my $iv = shift;
   my $repo_files = shift;
-  clave_presente( 'CI' );
+  clave_presente( $iv,  'CI' );
   file_present( $iv->{'CI'}, $repo_files, "Configuración CI" ) if $iv->{'CI'};
   comprueba_caps( $iv->{'CI'} );
   end_group();
@@ -174,7 +174,7 @@ sub objetivo_7 {
   doing( "🎯 Objetivo 7" );
   my $iv = shift;
   my $repo_files = shift;
-  clave_presente( 'configuracion' );
+  clave_presente( $iv,  'configuracion' );
   file_present( $iv->{'configuracion'}, $repo_files, "Configuración app" ) if $iv->{'configuracion'};
   my $gitignore =  read_text( ".gitignore" );
    if ( index( $gitignore, ".env" ) >= 0 ) {
@@ -189,7 +189,7 @@ sub objetivo_7 {
 sub objetivo_8 {
   doing( "🎯 Objetivo 8" );
   my $iv = shift;
-  clave_presente( 'framework' );
+  clave_presente( $iv,  'framework' );
   if ( $iv->{'framework'} !~ /(express|flask)/ ) {
     say all_good( "No has elegido ninguno de los frameworks «malditos»");
   } else {
@@ -234,6 +234,7 @@ sub README_contiene {
 }
 
 sub clave_presente {
+  my $iv = shift;
   my $clave = shift;
   comprueba_con_mensaje( $iv->{$clave}, "🗝️ «$clave» presente", "Falta clave «$clave»" );
 }
