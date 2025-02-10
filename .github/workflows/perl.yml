@@ -14,7 +14,14 @@ jobs:
       uses: awalsh128/cache-apt-pkgs-action@latest
       with:
         packages: cpanminus
+    - name: Cache dependencies
+      id: cache-cpanfile
+      uses: actions/cache@v4
+      with:
+        path: ~/perl5
+        key: ${{ runner.os }}-cpanfile
     - name: Install dependencies
+      if: steps.cache-cpanfiles.outputs.cache-hit != 'true'
       run: cpanm --installdeps .
     - name: Test perl
       run: prove
