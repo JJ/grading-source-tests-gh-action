@@ -12,8 +12,8 @@ jobs:
         fetch-depth: 0
     - name: Install cpanminus
       uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: cpanminus
+      with:
+        packages: cpanminus
     - name: Install dependencies
       run: cpanm --installdeps .
     - name: Test perl
