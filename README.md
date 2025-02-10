@@ -5,3 +5,6 @@ Perl. Asume que el fuente está descargado, y lleva a cabo una serie de acciones
 en Perl
 
 
+Principalmente asociada a [la asignatura Infraestructura
+Virtual](https://jj.github.io/IV), y usable como ejemplo. Cualquier otra
+aplicación necesitaría escribirse desde cero, probablemente.
