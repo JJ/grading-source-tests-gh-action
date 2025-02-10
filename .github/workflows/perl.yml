@@ -1,0 +1,14 @@
+name: Test Perl utility library
+on: [push, pull_request]
+
+jobs:
+  hello_world_job:
+    runs-on: ubuntu-latest
+    name: Testing
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Test perl
+      run: prove
