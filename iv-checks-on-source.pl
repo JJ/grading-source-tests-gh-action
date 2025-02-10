@@ -106,7 +106,7 @@ sub objetivo_1 {
   doing( "🎯 Objetivo 1" );
   my $iv = shift;
   for my $k (qw(lenguaje entidad)) {
-    comprueba( $iv->{$k},
+    comprueba_con_mensaje(  $iv->{$k},
                "🗝️ $k está presente en «$config_file.yaml»",
                "🗝️ $k no está presente en «$config_file.yaml»"
              );
@@ -125,13 +125,13 @@ sub objetivo_3 {
   my $README = shift;
   my $repo_files = shift;
 
-  comprueba( $iv->{'automatizar'}, "🗝️ «automatizar» presente", "Falta clave «automatizar»" );
-  comprueba( ref $iv->{'automatizar'} eq "HASH",
+  comprueba_con_mensaje(  $iv->{'automatizar'}, "🗝️ «automatizar» presente", "Falta clave «automatizar»" );
+  comprueba_con_mensaje(  ref $iv->{'automatizar'} eq "HASH",
              "🗝️ «automatizar» es un diccionario",
              "La clave «automatizar» no contiene un diccionario, sino un " . ref $iv->{'automatizar'} );
-  comprueba( $iv->{'automatizar'}{'fichero'}, "🗝️  «automatizar→fichero» presente", "Falta clave «automatizar→fichero»" );
+  comprueba_con_mensaje(  $iv->{'automatizar'}{'fichero'}, "🗝️  «automatizar→fichero» presente", "Falta clave «automatizar→fichero»" );
   file_present( $iv->{'automatizar'}{'fichero'}, $repo_files, "Con el fichero de tareas" );
-  comprueba( $iv->{'automatizar'}{'orden'}, "🗝️ «automatizar→orden» presente", "Falta clave «automatizar→orden»" );
+  comprueba_con_mensaje(  $iv->{'automatizar'}{'orden'}, "🗝️ «automatizar→orden» presente", "Falta clave «automatizar→orden»" );
   README_contiene( "$iv->{'automatizar'}{'orden'} check", $README );
   set_output( 'ORDEN', $iv->{'automatizar'}{'orden'} );
   set_env( 'ORDEN', $iv->{'automatizar'}{'orden'} );
@@ -200,14 +200,7 @@ sub objetivo_8 {
 }
 
 # Funciones de utilidad
-sub comprueba {
-  my ( $expresion, $bien, $mal ) = @_;
-  if ( $expresion ) {
-    say all_good($bien);
-  } else {
-    error( sorry( $mal ) );
-  }
-}
+
 
 sub comprueba_caps {
   my $nombre_fichero = shift;
@@ -224,7 +217,7 @@ sub file_present {
   my @files = (ref($file) eq 'ARRAY')?@$file:($file);
   say all_good("Buscando @files en @$ls_files_ref");
   for my $a_file (@files ) {
-    comprueba( grep( /$a_file/, @$ls_files_ref ),
+    comprueba_con_mensaje(  grep( /$a_file/, @$ls_files_ref ),
                "Fichero $name → $a_file presente",
                "Fichero $name → $a_file no está presente" );
   }
@@ -242,5 +235,5 @@ sub README_contiene {
 
 sub clave_presente {
   my $clave = shift;
-  comprueba( $iv->{$clave}, "🗝️ «$clave» presente", "Falta clave «$clave»" );
+  comprueba_con_mensaje( $iv->{$clave}, "🗝️ «$clave» presente", "Falta clave «$clave»" );
 }
