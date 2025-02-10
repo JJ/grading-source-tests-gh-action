@@ -24,4 +24,4 @@ jobs:
       if: steps.cache-cpanfiles.outputs.cache-hit != 'true'
       run: cpanm -v --installdeps .
     - name: Test perl
-      run: prove -l ~/perl5 t
+      run: ls ~/perl5 && prove -l ~/perl5 t/
