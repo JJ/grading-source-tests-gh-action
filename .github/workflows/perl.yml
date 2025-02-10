@@ -22,6 +22,6 @@ jobs:
         key: ${{ runner.os }}-cpanfile
     - name: Install dependencies
       if: steps.cache-cpanfiles.outputs.cache-hit != 'true'
-      run: cpanm --installdeps .
+      run: cpanm -v --installdeps .
     - name: Test perl
       run: prove
