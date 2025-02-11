@@ -9380,9 +9380,13 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
         $github{$nogithub} = $ENV{$k} ;
       }
     }
+    if ($ENV{'GITHUB_REPOSITORY'}) {
+      my @repo_parts = split("/", $ENV{'GITHUB_REPOSITORY'});
+      $github{'REPO_NAME'} = pop @repo_parts;
+    }
   }
   
-  use version; our $VERSION = qv('0.2.0');
+  use version; our $VERSION = qv('0.2.1');
   
   sub _write_to_github_file {
     my ($github_var, $content) = @_;
@@ -9489,6 +9493,11 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
       for my $g (keys %github ) {
          say "GITHUB_$g -> ", $github{$g}
       }
+  
+      # The name of the repository itself, without the name part, is stored in a new variable
+      say $github{'REPO_NAME'};
+  
+      # These are commands that mirror those in GitHub actions
   
       # Set step output
       set_output("FOO", "BAR");
@@ -13830,6 +13839,7 @@ unshift @INC, bless \%fatpacked, $class;
 use strict;
 use warnings;
 use v5.14;
+use utf8;
 
 use Git;
 use GitHub::Actions;
@@ -13854,6 +13864,7 @@ my $student_repo = Git->repository ( Directory => "." );
 my @repo_files = $student_repo->command("ls-files");
 my ($readme_file) = grep( /^README/, @repo_files );
 my $README =  read_text( $readme_file );
+utf8::encode($README);
 
 objetivo_0(\@repo_files, $README);
 
