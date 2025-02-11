@@ -1,5 +1,5 @@
 use GitHub::Actions;
-use v5.14;
+use v5.36;
 
 # Imprime cabeceras de objetivo/hito, principalmente
 sub doing {
@@ -36,10 +36,10 @@ sub README_contiene_con_mensaje {
   }
 }
 
-sub groupify( &wrapped_function, $group_name ) {
+sub groupify( $wrapped_function, $group_name ) {
   return sub {
     doing( $group_name );
-    &wrapped_function( @_ );
+    &$wrapped_function( @_ );
     end_group();
   }
 }
