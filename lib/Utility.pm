@@ -38,17 +38,10 @@ sub README_contiene_con_mensaje {
 
 sub README_no_contiene_con_mensaje( $cadena, $README)  {
   my @lineas = split("\n", $README );
-  my @lineas_con_cadena;
-  for (my $l = 0; $l <= $#lineas; $l++ ) {
-    push @lineas_con_cadena, $l +1 if index($cadena, $lineas[$l] ) >= 0
-  }
-
-  if (  @lineas_con_cadena >= 1 ) {
-    for my $l (@lineas_con_cadena) {
-      error_on_file( sorry("El README no debe contener «$cadena»"), "README.md", $l );
-    }
-  } else {
+  if ( index( $README, $cadena ) < 0 ) {
     say all_good("El README no contiene «$cadena»");
+  } else {
+    error_on_file( sorry("El README no debe contener «$cadena». Consulta el guión para ver por qué esto es un error"), "README.md" );
   }
 }
 
