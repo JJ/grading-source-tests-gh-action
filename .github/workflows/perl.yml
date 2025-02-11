@@ -21,7 +21,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: /usr/local/share/perl/5.38.2
-        key: ${{ runner.os }}-cpanfile-sudo
+        key: cpanfile-sudo-${{ hashFiles('cpanfile') }}
     - name: Install dependencies
       if: steps.cache-cpanfiles.outputs.cache-hit != 'true'
       run: cpanm --sudo -v --installdeps .
