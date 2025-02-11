@@ -3,6 +3,7 @@
 use strict;
 use warnings;
 use v5.14;
+use utf8;
 
 use Git;
 use GitHub::Actions;
@@ -27,6 +28,7 @@ my $student_repo = Git->repository ( Directory => "." );
 my @repo_files = $student_repo->command("ls-files");
 my ($readme_file) = grep( /^README/, @repo_files );
 my $README =  read_text( $readme_file );
+utf8::encode($README);
 
 objetivo_0(\@repo_files, $README);
 
