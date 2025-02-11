@@ -37,7 +37,7 @@ sub README_contiene_con_mensaje {
 }
 
 sub README_no_contiene_con_mensaje( $cadena, $README)  {
-  my @lineas = split("\n", $README );
+  say "README $README\n Cadena $cadena ";
   if ( index( $README, $cadena ) < 0 ) {
     say all_good("El README no contiene «$cadena»");
   } else {
