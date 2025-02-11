@@ -9359,7 +9359,7 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   use Exporter 'import'; # needed to use @EXPORT
   use warnings;
   use strict;
-  use Carp;
+  use Carp qw(croak);
   
   use v5.14;
   
@@ -9368,7 +9368,7 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   our $EXIT_CODE = 0;
   
   our @EXPORT = qw(
-                    %github set_output set_env debug error warning
+                    %github $EXIT_CODE set_output set_env debug error warning
                     set_failed error_on_file warning_on_file
                     start_group end_group exit_action
                  );
@@ -9382,7 +9382,7 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
     }
   }
   
-  use version; our $VERSION = qv('0.1.2');
+  use version; our $VERSION = qv('0.2.0');
   
   sub _write_to_github_file {
     my ($github_var, $content) = @_;
@@ -9392,7 +9392,7 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   }
   
   sub set_output {
-    carp "Need name and value" unless @_;
+    croak "Need name and value" unless @_;
     my ($output_name, $output_value) = @_;
     $output_value ||=1;
     _write_to_github_file( 'OUTPUT', "$output_name=$output_value" );
@@ -9431,15 +9431,19 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   sub command_on_file {
     my $command = shift;
     my $message = shift;
-    my ($file, $line, $col ) = @_;
-    if ( $file ) {
-      my @data;
-      push( @data, "file=$file");
-      push( @data, "line=$line") if $line;
-      push( @data, "col=$col") if $col;
-      $command .= " ".join(",", @data );
+    croak "Need at least a file name" unless @_;
+    my ($file, $line, $title, $col ) = @_;
+    my @data;
+    push( @data, "file=$file");
+    push( @data, "line=$line") if $line;
+    if ( $title ) {
+      push( @data, "title=$title"."::$message");
+    } else {
+      push( @data, "title=".uc(substr($command,2))."::$message");
     }
-    say $command."::$message"
+    push( @data, "col=$col") if $col;
+    $command .= " ".join(",", @data );
+    say $command;
   }
   
   sub start_group {
@@ -9464,15 +9468,19 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   
   =head1 NAME
   
-  GitHub::Actions - Work in GitHub Actions using Perl
+  GitHub::Actions - Work in GitHub Actions using native Perl
   
   
   =head1 VERSION
   
-  This document describes GitHub::Actions version 0.1.1.1
+  This document describes GitHub::Actions version 0.2.0
   
   
   =head1 SYNOPSIS
+  
+  This will be in the context of oa GitHub actions step. You will need to install
+  via CPAN this module first, and use C<perl {0}> as C<shell>. Please see below
+  this code for instructions.
   
       use GitHub::Actions;
       use v5.14;
@@ -9491,9 +9499,9 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
       # Produces an error and sets exit code to 1
       error( "FOO has happened" );
   
-      # Error/warning with information on file
-      error_on_file( "There's foo", $file, $line, $col );
-      warning_on_file( "There's bar", $file, $line, $col );
+      # Error/warning with information on file. The last 3 parameters are optional
+      error_on_file( "There's foo", $file, $line, $title, $col );
+      warning_on_file( "There's bar", $file, $line, $title, $col );
   
       # Debugging messages and warnings
       debug( "Value of FOO is $bar" );
@@ -9510,14 +9518,14 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
       # Errors and exits
       set_failed( "We're doomed" );
   
-  Install this module within a GitHub action
+  Install this module within a GitHub action, as a C<step>
   
-        . name: "Install GitHub::Actions"
+        - name: "Install GitHub::Actions"
           run: sudo cpan GitHub::Actions
   
-  (we need C<sudo> since we're using the system Perl)
+  (we need C<sudo> since we're using the system Perl that's installed in every runner)
   
-  You can use this as a C<step>
+  Then, as another C<step>
   
         - name: Test env variables
           shell: perl {0}
@@ -9525,22 +9533,23 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
             use GitHub::Actions;
             set_env( 'FOO', 'BAR');
   
-  In most cases, you'll want to just have it installed locally and fatpack it to
-  upload it to the repository.
+  In most cases, you'll want to just have it installed locally in your repository
+  and C<fatpack> it in a script that you will upload it to the repository.
   
   =head1 DESCRIPTION
   
   GitHub Actions include by default, at least in its Linux runners, a
-  system Perl which you can use directly in your GitHub actions. This here is
+  system Perl which you can use directly in them. This here is
   a (for the time being) minimalistic module that tries to help a bit
   with that, by defining a few functions that will be useful when
   performing GitHub actions. Besides the system Perl, you can use any of
   L<the modules
   installed|https://gist.github.com/JJ/edf3a39d68525439978da2a02763d42b>. You
   can install other modules via cpan or, preferably for speed, via the
-  Ubuntu package (or equivalent)
+  Ubuntu package (or equivalent).
   
-  Check out an example of using it in the L<repository|https://github.com/JJ/perl-GitHub-Actions/blob/main/.github/workflows/self-test.yml>
+  Check out an example of using it in the
+  L<repository|https://github.com/JJ/perl-GitHub-Actions/blob/main/.github/workflows/self-test.yml>.
   
   =head1 INTERFACE
   
@@ -9610,16 +9619,17 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
         $ENV{'GITHUB_BAR'} = 'bar';
       }
   
+  You can use this for testing, for instance, if you create any module based on
+  this one.
   
   =head1 DEPENDENCIES
   
-  Intentionally, no dependencies are included.
-  
+  Intentionally, no dependencies are included. Several dependencies are used for
+  testing, though.
   
   =head1 INCOMPATIBILITIES
   
   None reported.
-  
   
   =head1 BUGS AND LIMITATIONS
   
@@ -9635,7 +9645,8 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   
   =head1 LICENCE AND COPYRIGHT
   
-  Copyright (c) 2021, JJ Merelo C<< <jmerelo@CPAN.org> >>. All rights reserved.
+  Copyright (c) 2021, 2022 JJ Merelo C<< <jmerelo@CPAN.org> >>. All rights
+  reserved.
   
   This module is free software; you can redistribute it and/or
   modify it under the same terms as Perl itself. See L<perlartistic>.
@@ -10164,6 +10175,7 @@ MO_XS
 
 $fatpacked{"Utility.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'UTILITY';
   use GitHub::Actions;
+  use v5.14;
   
   # Imprime cabeceras de objetivo/hito, principalmente
   sub doing {
@@ -10171,7 +10183,7 @@ $fatpacked{"Utility.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'UTILITY
     start_group "\t✔ Comprobando $what\n";
   }
   
-  # Cuando los tets van bien
+  # Cuando los tests van bien
   sub all_good {
     return "✅🍊️‍🔥 " . shift
   }
@@ -10181,6 +10193,25 @@ $fatpacked{"Utility.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'UTILITY
   sub sorry {
     return "🍋💥❌ " . shift
   }
+  
+  sub comprueba_con_mensaje {
+    my ( $expresion, $bien, $mal ) = @_;
+    if ( $expresion ) {
+      say all_good($bien);
+    } else {
+      error( sorry( $mal ) );
+    }
+  }
+  
+  sub README_contiene_con_mensaje {
+    my ($cadena, $README) = @_;
+    if ( index( $README, $cadena ) >= 0 ) {
+      say all_good("El README contiene «$cadena»");
+    } else {
+      error_on_file( sorry("El README no contiene «$cadena»"), "README.md" );
+    }
+  }
+  
   
   "Yay"
 UTILITY
@@ -13886,7 +13917,7 @@ sub objetivo_1 {
   doing( "🎯 Objetivo 1" );
   my $iv = shift;
   for my $k (qw(lenguaje entidad)) {
-    comprueba( $iv->{$k},
+    comprueba_con_mensaje(  $iv->{$k},
                "🗝️ $k está presente en «$config_file.yaml»",
                "🗝️ $k no está presente en «$config_file.yaml»"
              );
@@ -13905,14 +13936,14 @@ sub objetivo_3 {
   my $README = shift;
   my $repo_files = shift;
 
-  comprueba( $iv->{'automatizar'}, "🗝️ «automatizar» presente", "Falta clave «automatizar»" );
-  comprueba( ref $iv->{'automatizar'} eq "HASH",
+  comprueba_con_mensaje(  $iv->{'automatizar'}, "🗝️ «automatizar» presente", "Falta clave «automatizar»" );
+  comprueba_con_mensaje(  ref $iv->{'automatizar'} eq "HASH",
              "🗝️ «automatizar» es un diccionario",
              "La clave «automatizar» no contiene un diccionario, sino un " . ref $iv->{'automatizar'} );
-  comprueba( $iv->{'automatizar'}{'fichero'}, "🗝️  «automatizar→fichero» presente", "Falta clave «automatizar→fichero»" );
+  comprueba_con_mensaje(  $iv->{'automatizar'}{'fichero'}, "🗝️  «automatizar→fichero» presente", "Falta clave «automatizar→fichero»" );
   file_present( $iv->{'automatizar'}{'fichero'}, $repo_files, "Con el fichero de tareas" );
-  comprueba( $iv->{'automatizar'}{'orden'}, "🗝️ «automatizar→orden» presente", "Falta clave «automatizar→orden»" );
-  README_contiene( "$iv->{'automatizar'}{'orden'} check", $README );
+  comprueba_con_mensaje(  $iv->{'automatizar'}{'orden'}, "🗝️ «automatizar→orden» presente", "Falta clave «automatizar→orden»" );
+  README_contiene_con_mensaje( "$iv->{'automatizar'}{'orden'} check", $README );
   set_output( 'ORDEN', $iv->{'automatizar'}{'orden'} );
   set_env( 'ORDEN', $iv->{'automatizar'}{'orden'} );
   end_group();
@@ -13924,10 +13955,10 @@ sub objetivo_4 {
   my $README = shift;
   my $repo_files = shift;
 
-  clave_presente( 'test' );
+  clave_presente( $iv,  'test' );
   file_present( $iv->{'test'}, $repo_files, "Con un fichero de test" );
   comprueba_caps( $iv->{'test'} );
-  README_contiene( "$iv->{'automatizar'}{'orden'} test", $README );
+  README_contiene_con_mensaje( "$iv->{'automatizar'}{'orden'} test", $README );
   end_group();
 }
 
@@ -13944,7 +13975,7 @@ sub objetivo_6 {
   doing( "🎯 Objetivo 6" );
   my $iv = shift;
   my $repo_files = shift;
-  clave_presente( 'CI' );
+  clave_presente( $iv,  'CI' );
   file_present( $iv->{'CI'}, $repo_files, "Configuración CI" ) if $iv->{'CI'};
   comprueba_caps( $iv->{'CI'} );
   end_group();
@@ -13954,7 +13985,7 @@ sub objetivo_7 {
   doing( "🎯 Objetivo 7" );
   my $iv = shift;
   my $repo_files = shift;
-  clave_presente( 'configuracion' );
+  clave_presente( $iv,  'configuracion' );
   file_present( $iv->{'configuracion'}, $repo_files, "Configuración app" ) if $iv->{'configuracion'};
   my $gitignore =  read_text( ".gitignore" );
    if ( index( $gitignore, ".env" ) >= 0 ) {
@@ -13969,7 +14000,7 @@ sub objetivo_7 {
 sub objetivo_8 {
   doing( "🎯 Objetivo 8" );
   my $iv = shift;
-  clave_presente( 'framework' );
+  clave_presente( $iv,  'framework' );
   if ( $iv->{'framework'} !~ /(express|flask)/ ) {
     say all_good( "No has elegido ninguno de los frameworks «malditos»");
   } else {
@@ -13980,14 +14011,7 @@ sub objetivo_8 {
 }
 
 # Funciones de utilidad
-sub comprueba {
-  my ( $expresion, $bien, $mal ) = @_;
-  if ( $expresion ) {
-    say all_good($bien);
-  } else {
-    error( sorry( $mal ) );
-  }
-}
+
 
 sub comprueba_caps {
   my $nombre_fichero = shift;
@@ -14004,23 +14028,15 @@ sub file_present {
   my @files = (ref($file) eq 'ARRAY')?@$file:($file);
   say all_good("Buscando @files en @$ls_files_ref");
   for my $a_file (@files ) {
-    comprueba( grep( /$a_file/, @$ls_files_ref ),
+    comprueba_con_mensaje(  grep( /$a_file/, @$ls_files_ref ),
                "Fichero $name → $a_file presente",
                "Fichero $name → $a_file no está presente" );
   }
 
 }
 
-sub README_contiene {
-  my ($cadena, $README) = @_;
-  if ( index( $README, $cadena ) >= 0 ) {
-    say all_good( "El README contiene «$cadena»");
-  } else {
-    error (sorry( "El README no contiene «$cadena»" ));
-  }
-}
-
 sub clave_presente {
+  my $iv = shift;
   my $clave = shift;
-  comprueba( $iv->{$clave}, "🗝️ «$clave» presente", "Falta clave «$clave»" );
+  comprueba_con_mensaje( $iv->{$clave}, "🗝️ «$clave» presente", "Falta clave «$clave»" );
 }
