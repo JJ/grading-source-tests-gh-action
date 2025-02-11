@@ -23,7 +23,7 @@ jobs:
         path: /usr/local/share/perl/5.38.2
         key: cpanfile-sudo-${{ hashFiles('cpanfile') }}
     - name: Install dependencies
-      if: steps.cache-cpanfiles.outputs.cache-hit != 'true'
+      if: steps.cache-cpanfile.outputs.cache-hit != 'true'
       run: cpanm --sudo -v --installdeps .
     - name: Test perl
       run: prove
