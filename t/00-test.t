@@ -1,4 +1,5 @@
 use Test::More; # -*- mode: cperl -*-
+use v5.36;
 
 use lib qw(lib ../lib);
 
@@ -30,6 +31,19 @@ subtest "Funciones de utilidad" => sub {
   }
 
   stdout_like( \&readme_no_contiene, qr/README\.md/, "Error de no contiene correcto" );
+};
+
+subtest "Funciones para objetivos" => sub {
+
+  my $hello = sub {
+    my $world = shift;
+    say "Hello $world";
+  };
+
+  my $groupified_hello = groupify( $hello, "GROUP_HELLO" );
+
+  stdout_like( sub { $groupified_hello->( "Test" ) }, qr/GROUP_HELLO/, "Can groupify" );
+
 };
 
 done_testing;
