@@ -29,10 +29,11 @@ sub comprueba_con_mensaje {
 
 sub README_contiene_con_mensaje {
   my ($cadena, $README) = @_;
-  comprueba_con_mensaje( index( $README, $cadena ) >= 0,
-                         "El README contiene «$cadena»",
-                         "El README no contiene «$cadena»"
-                       );
+  if ( index( $README, $cadena ) >= 0 ) {
+    say all_good("El README contiene «$cadena»");
+  } else {
+    error_on_file( sorry("El README no contiene «$cadena»"), "README.md" );
+  }
 }
 
 

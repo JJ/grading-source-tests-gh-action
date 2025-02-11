@@ -22,4 +22,10 @@ sub salida_para_expresion_correcta() {
 
 stdout_is( \&salida_para_expresion_correcta, all_good($BIEN)."\n", "Va bene bien escritos" );
 
+sub readme_no_contiene() {
+  README_contiene_con_mensaje( "foo", "bar" );
+}
+
+stdout_like( \&readme_no_contiene, qr/README\.md/, "Error de no contiene correcto" );
+
 done_testing;
