@@ -13839,7 +13839,6 @@ unshift @INC, bless \%fatpacked, $class;
 use strict;
 use warnings;
 use v5.14;
-use utf8;
 
 use Git;
 use GitHub::Actions;
