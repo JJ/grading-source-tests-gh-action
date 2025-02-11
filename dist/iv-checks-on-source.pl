@@ -10212,6 +10212,22 @@ $fatpacked{"Utility.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'UTILITY
     }
   }
   
+  sub README_no_contiene_con_mensaje( $cadena, $README)  {
+    my @lineas = split("\n", $README );
+    my @lineas_con_cadena;
+    for (my $l = 0; $l <= $#lineas; $l++ ) {
+      push @lineas_con_cadena, $l +1 if index($cadena, $lineas[$l] ) >= 0
+    }
+  
+    if (  @lineas_con_cadena >= 1 ) {
+      for my $l (@lineas_con_cadena) {
+        error_on_file( sorry("El README no debe contener «$cadena»"), "README.md", $l );
+      }
+    } else {
+      say all_good("El README no contiene «$cadena»");
+    }
+  }
+  
   sub groupify( $wrapped_function, $group_name ) {
     return sub {
       doing( $group_name );
@@ -13843,14 +13859,14 @@ my $student_repo = Git->repository ( Directory => "." );
 
 # Algunas variables
 my @repo_files = $student_repo->command("ls-files");
+my ($readme_file) = grep( /^README/, @repo_files );
+my $README =  read_text( $readme_file );
 
-objetivo_0(@repo_files);
+objetivo_0(\@repo_files, $README);
 
 exit_action() if $fase <= 1;
 
 # Fase 2
-my ($readme_file) = grep( /^README/, @repo_files );
-my $README =  read_text( $readme_file );
 my $iv;
 
 my $file = "$config_file.yaml";
@@ -13900,12 +13916,10 @@ objetivo_8( $iv);
 
 exit_action();
 
-# Mensajes diversos
-
-
 # Objetivos
 sub objetivo_0 {
-  my @repo_files = @_;
+  my @repo_files = @{$_[0]};
+  my $README = $_[1];
   doing( "🎯 Objetivo 0" );
   for my $f (qw( README.md .gitignore LICENSE )) {
     if ( grep( /$f/, @repo_files) )  {
@@ -13914,6 +13928,9 @@ sub objetivo_0 {
       error( sorry( "Falta $f" ) );
     }
   }
+
+  README_no_contiene_con_mensaje( "aplicación", $README );
+
   end_group();
 }
 

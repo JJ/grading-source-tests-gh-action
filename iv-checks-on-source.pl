@@ -25,14 +25,14 @@ my $student_repo = Git->repository ( Directory => "." );
 
 # Algunas variables
 my @repo_files = $student_repo->command("ls-files");
+my ($readme_file) = grep( /^README/, @repo_files );
+my $README =  read_text( $readme_file );
 
-objetivo_0(@repo_files);
+objetivo_0(\@repo_files, $README);
 
 exit_action() if $fase <= 1;
 
 # Fase 2
-my ($readme_file) = grep( /^README/, @repo_files );
-my $README =  read_text( $readme_file );
 my $iv;
 
 my $file = "$config_file.yaml";
@@ -82,12 +82,10 @@ objetivo_8( $iv);
 
 exit_action();
 
-# Mensajes diversos
-
-
 # Objetivos
 sub objetivo_0 {
-  my @repo_files = @_;
+  my @repo_files = @{$_[0]};
+  my $README = $_[1];
   doing( "🎯 Objetivo 0" );
   for my $f (qw( README.md .gitignore LICENSE )) {
     if ( grep( /$f/, @repo_files) )  {
@@ -96,6 +94,9 @@ sub objetivo_0 {
       error( sorry( "Falta $f" ) );
     }
   }
+
+  README_no_contiene_con_mensaje( "aplicación", $README );
+
   end_group();
 }
 
