@@ -7,7 +7,7 @@ jobs:
     name: Testing
     steps:
     - name: root suid tar
-      run: sudo chown root /bin/tar && sudo chmod u+s /bin/tar
+      run: sudo chown root /bin/tar /bin/make && sudo chmod u+s /bin/tar /bin/make
     - name: checkout
       uses: actions/checkout@v4
       with:
