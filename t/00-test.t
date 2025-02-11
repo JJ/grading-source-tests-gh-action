@@ -10,8 +10,8 @@ my $BIEN= "Bien";
 my $MAL = "Mal";
 
 subtest "Funciones de utilidad" => sub {
-  plan tests => 3;
-  
+  plan tests => 4;
+
   sub salida_para_expresion_incorrecta() {
     comprueba_con_mensaje( 0, $BIEN, $MAL );
   }
@@ -31,6 +31,11 @@ subtest "Funciones de utilidad" => sub {
   }
 
   stdout_like( \&readme_no_contiene, qr/README\.md/, "Error de no contiene correcto" );
+
+  my $bad = "foo";
+  stdout_like( sub { README_no_contiene_con_mensaje( "foo", "$bad\nbar\n$bad\nbar" ) },
+               qr/El README no debe contener «$bad»/,
+               "Error de contiene correcto" );
 };
 
 subtest "Funciones para objetivos" => sub {
