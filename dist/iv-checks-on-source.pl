@@ -10175,7 +10175,7 @@ MO_XS
 
 $fatpacked{"Utility.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'UTILITY';
   use GitHub::Actions;
-  use v5.14;
+  use v5.36;
   
   # Imprime cabeceras de objetivo/hito, principalmente
   sub doing {
@@ -10212,6 +10212,13 @@ $fatpacked{"Utility.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'UTILITY
     }
   }
   
+  sub groupify( $wrapped_function, $group_name ) {
+    return sub {
+      doing( $group_name );
+      &$wrapped_function( @_ );
+      end_group();
+    }
+  }
   
   "Yay"
 UTILITY
@@ -13827,23 +13834,18 @@ use Utility;
 
 my $fase = $ENV{'objetivo'};
 my $config_file = $ENV{'CONFIGFILE'};
-metadatos( $fase );
+
+# Definiendo funciones
+my $metadatos = groupify( { say "Objetivo $fase" }, "Metadatos" );
+
+# Comienza la acción
+$metadatos->();
 
 # Previa
 my $student_repo = Git->repository ( Directory => "." );
 
 # Algunas variables
 my @repo_files = $student_repo->command("ls-files");
-
-if ( -f "DOCKER_USER" ) {
-  say "❢ Usuario de Docker alternativo";
-  open( my $fh, "<", "DOCKER_USER" ) || die "No puedo abrir DOCKER_USER";
-  my $docker_user = <$fh>;
-  chomp $docker_user;
-  set_env( 'docker_user', $docker_user );
-} else {
-  set_env( 'docker_user', $ENV{'user'} );
-}
 
 objetivo_0(@repo_files);
 
@@ -13875,6 +13877,16 @@ objetivo_4( $iv, $README, \@repo_files );
 
 exit_action() if $fase < 5;
 
+if ( -f "DOCKER_USER" ) {
+  say "❢ Usuario de Docker alternativo";
+  open( my $fh, "<", "DOCKER_USER" ) || die "No puedo abrir DOCKER_USER";
+  my $docker_user = <$fh>;
+  chomp $docker_user;
+  set_env( 'docker_user', $docker_user );
+} else {
+  set_env( 'docker_user', $ENV{'user'} );
+}
+
 objetivo_5( $iv,  \@repo_files );
 
 exit_action() if $fase < 6;
@@ -13892,12 +13904,7 @@ objetivo_8( $iv);
 exit_action();
 
 # Mensajes diversos
-sub metadatos {
-  my $fase = shift;
-  doing( "Metadatos");
-  say "Fase $fase";
-  end_group();
-}
+
 
 # Objetivos
 sub objetivo_0 {
