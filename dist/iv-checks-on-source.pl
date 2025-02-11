@@ -9386,7 +9386,17 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
     }
   }
   
-  use version; our $VERSION = qv('0.2.1');
+  =head1 NAME
+  
+  GitHub::Actions - Work in GitHub Actions using native Perl
+  
+  =head1 VERSION
+  
+  This document describes GitHub::Actions version 0.2.2
+  
+  =cut
+  
+  use version; our $VERSION = qv('0.2.2');
   
   sub _write_to_github_file {
     my ($github_var, $content) = @_;
@@ -9425,6 +9435,7 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   }
   
   sub error_on_file {
+    $EXIT_CODE= 1;
     command_on_file( "::error", @_ );
   }
   
@@ -9470,19 +9481,10 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   "Action!"; # Magic true value required at end of module
   __END__
   
-  =head1 NAME
-  
-  GitHub::Actions - Work in GitHub Actions using native Perl
-  
-  
-  =head1 VERSION
-  
-  This document describes GitHub::Actions version 0.2.0
-  
   
   =head1 SYNOPSIS
   
-  This will be in the context of oa GitHub actions step. You will need to install
+  This will be in the context of a GitHub action step. You will need to install
   via CPAN this module first, and use C<perl {0}> as C<shell>. Please see below
   this code for instructions.
   
@@ -9509,8 +9511,8 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
       error( "FOO has happened" );
   
       # Error/warning with information on file. The last 3 parameters are optional
-      error_on_file( "There's foo", $file, $line, $title, $col );
-      warning_on_file( "There's bar", $file, $line, $title, $col );
+      error_on_file( "There's foo", $file, $line, "Error", $col ); #  and sets exit code to 1
+      warning_on_file( "There's bar", $file, $line, "Warning", $col );
   
       # Debugging messages and warnings
       debug( "Value of FOO is $bar" );
@@ -9571,6 +9573,10 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   
   Equivalent to L<C<set_output>|https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#setting-an-output-parameter>
   
+  =head2 set_failed( $error_message )
+  
+  Sets the step as failed with the indicated error message and exits.
+  
   =head2 debug( $debug_message )
   
   Equivalent to L<C<debug>|https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#setting-a-debug-message>
@@ -9586,15 +9592,18 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   
   Equivalent to L<C<warning>|https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#setting-a-warning-message>, simply prints a warning.
   
-  =head2 command_on_file( $error_message, $file, $line, $col )
+  =head2 command_on_file( $error_message, $file, $line, $title, $col )
   
   Common code for L<error_on_file> and L<warning_on_file>. Can be used for any future commands.
   
-  =head2 error_on_file( $error_message, $file, $line, $col )
+  =head2 error_on_file( $error_message, $file, $line, $title, $col )
   
-  Equivalent to L<C<error>|https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#setting-an-error-message>, prints an error message with file and line info
+  Equivalent to
+  L<C<error>|https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#setting-an-error-message>,
+  prints an error message with file and line info. Also set the exit status to 1,
+  so once again remember to call C<exit_action> after calling this.
   
-  =head2 warning_on_file( $warning_message, $file, $line, $col )
+  =head2 warning_on_file( $warning_message, $file, $line, $title, $col )
   
   Equivalent to L<C<warning>|https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#setting-a-warning-message>, prints an warning with file and line info.
   
@@ -9645,7 +9654,6 @@ $fatpacked{"GitHub/Actions.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   No bugs have been reported.
   
   Please report any bugs or feature requests to L<https://github.com/JJ/perl-GitHub-Actions/issues>.
-  
   
   =head1 AUTHOR
   
