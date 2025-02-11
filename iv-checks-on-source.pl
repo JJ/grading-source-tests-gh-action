@@ -16,7 +16,12 @@ use Utility;
 
 my $fase = $ENV{'objetivo'};
 my $config_file = $ENV{'CONFIGFILE'};
-metadatos( $fase );
+
+# Definiendo funciones
+my $metadatos = groupify( { say "Objetivo $fase" }, "Metadatos" );
+
+# Comienza la acción
+$metadatos->();
 
 # Previa
 my $student_repo = Git->repository ( Directory => "." );
@@ -81,12 +86,7 @@ objetivo_8( $iv);
 exit_action();
 
 # Mensajes diversos
-sub metadatos {
-  my $fase = shift;
-  doing( "Metadatos");
-  say "Fase $fase";
-  end_group();
-}
+
 
 # Objetivos
 sub objetivo_0 {
