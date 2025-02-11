@@ -24,16 +24,6 @@ my $student_repo = Git->repository ( Directory => "." );
 # Algunas variables
 my @repo_files = $student_repo->command("ls-files");
 
-if ( -f "DOCKER_USER" ) {
-  say "❢ Usuario de Docker alternativo";
-  open( my $fh, "<", "DOCKER_USER" ) || die "No puedo abrir DOCKER_USER";
-  my $docker_user = <$fh>;
-  chomp $docker_user;
-  set_env( 'docker_user', $docker_user );
-} else {
-  set_env( 'docker_user', $ENV{'user'} );
-}
-
 objetivo_0(@repo_files);
 
 exit_action() if $fase <= 1;
@@ -63,6 +53,16 @@ exit_action() if $fase < 4;
 objetivo_4( $iv, $README, \@repo_files );
 
 exit_action() if $fase < 5;
+
+if ( -f "DOCKER_USER" ) {
+  say "❢ Usuario de Docker alternativo";
+  open( my $fh, "<", "DOCKER_USER" ) || die "No puedo abrir DOCKER_USER";
+  my $docker_user = <$fh>;
+  chomp $docker_user;
+  set_env( 'docker_user', $docker_user );
+} else {
+  set_env( 'docker_user', $ENV{'user'} );
+}
 
 objetivo_5( $iv,  \@repo_files );
 
