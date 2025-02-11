@@ -18,7 +18,7 @@ my $fase = $ENV{'objetivo'};
 my $config_file = $ENV{'CONFIGFILE'};
 
 # Definiendo funciones
-my $metadatos = groupify( { say "Objetivo $fase" }, "Metadatos" );
+my $metadatos = groupify( sub { say "Objetivo $fase" }, "Metadatos" );
 
 # Comienza la acción
 $metadatos->();
