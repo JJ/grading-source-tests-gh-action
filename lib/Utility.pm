@@ -36,5 +36,12 @@ sub README_contiene_con_mensaje {
   }
 }
 
+sub groupify( &wrapped_function, $group_name ) {
+  return sub {
+    doing( $group_name );
+    &wrapped_function( @_ );
+    end_group();
+  }
+}
 
 "Yay"
