@@ -33,6 +33,7 @@ sub objetivo_0 {
     }
   }
 
+  README_contiene_con_mensaje( "configuración", $README );
   README_no_contiene_con_mensaje( "aplicación", $README );
 
   end_group();
