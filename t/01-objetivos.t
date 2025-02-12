@@ -40,5 +40,27 @@ subtest "Funciones de utilidad" => sub {
              "Testeando comprobaciones con README vacío" );
 };
 
+subtest "Objetivo 0" => sub {
+  plan tests => 1;
+  my $fake_readme_dir = "t/data";
+  my $current_dir = `pwd`;
+  chop( $current_dir );
+  my @mock_repo_files = qw( README.md .gitignore LICENSE );
+  my $fakeREADME=read_text("$fake_readme_dir/README.md");
+  utf8::encode($fakeREADME);
+  my $returnedREADME;
+  chdir($fake_readme_dir) || die "No encuentro el directorio";
+
+  stdout_like( sub {
+    $returnedREADME = objetivo_0( \@mock_repo_files );
+  },
+             qr/presente.+presente.+configuración.+aplicación/s,
+             "Testeando comprobaciones de contenido" );
+
+  chdir( $current_dir ) || die "No puedo cambiarme al original $!";
+
+};
+
+
 
 done_testing;
