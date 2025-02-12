@@ -4,6 +4,21 @@ use strict;
 use warnings;
 use v5.14;
 
+sub pre_objetivo_0 {
+  my @repo_files = @{$_[0]};
+  comprueba_con_mensaje( grep( /^README/, @repo_files ),
+                         "El fichero README está presente",
+                         "El fichero README no está incluido" );
+  my ($readme_file) = grep( /^README/, @repo_files );
+  my $README =  read_text( $readme_file );
+  comprueba_con_mensaje( $README,
+                         "El fichero README tiene contenido",
+                         "El fichero README no tiene nada" );
+
+  utf8::encode($README);
+  return $README;
+}
+
 sub objetivo_0 {
   my @repo_files = @{$_[0]};
   my $README = $_[1];

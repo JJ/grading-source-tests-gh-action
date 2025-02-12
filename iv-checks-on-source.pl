@@ -24,11 +24,9 @@ groupify( sub { say "Objetivo $fase" }, "Metadatos" )->();
 # Previa
 my $student_repo = Git->repository ( Directory => "." );
 
-# Algunas variables
+# Algunas variables previas al objetivo 0
 my @repo_files = $student_repo->command("ls-files");
-my ($readme_file) = grep( /^README/, @repo_files );
-my $README =  read_text( $readme_file );
-utf8::encode($README);
+my $README = pre_objetivo_0(\@repo_files);
 
 objetivo_0(\@repo_files, $README);
 
