@@ -41,7 +41,7 @@ subtest "Funciones de utilidad" => sub {
 };
 
 subtest "Objetivo 0" => sub {
-  plan tests => 1;
+  plan tests => 2;
   my $fake_readme_dir = "t/data";
   my $current_dir = `pwd`;
   chop( $current_dir );
@@ -52,12 +52,20 @@ subtest "Objetivo 0" => sub {
   chdir($fake_readme_dir) || die "No encuentro el directorio";
 
   stdout_like( sub {
-    $returnedREADME = objetivo_0( \@mock_repo_files );
+    $returnedREADME = objetivo_0( \@mock_repo_files, $fakeREADME );
   },
              qr/presente.+presente.+configuración.+aplicación/s,
              "Testeando comprobaciones de contenido" );
 
   chdir( $current_dir ) || die "No puedo cambiarme al original $!";
+
+  @mock_repo_files = qw( README.md LICENSE );
+    stdout_like( sub {
+    $returnedREADME = objetivo_0( \@mock_repo_files, $fakeREADME );
+  },
+                 qr/Falta .gitignore/s,
+                 "Falta algún fichero" );
+
 
 };
 
