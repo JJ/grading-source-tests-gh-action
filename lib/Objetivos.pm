@@ -4,6 +4,8 @@ use strict;
 use warnings;
 use v5.14;
 
+use File::Slurper qw(read_text);
+
 sub pre_objetivo_0 {
   my @repo_files = @{$_[0]};
   comprueba_con_mensaje( grep( /^README/, @repo_files ),

@@ -7,7 +7,6 @@ use v5.14;
 use Git;
 use GitHub::Actions;
 
-use File::Slurper qw(read_text);
 use YAML qw(LoadFile);
 
 use lib "lib";
