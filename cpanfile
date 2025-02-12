@@ -4,4 +4,3 @@ requires 'App::FatPacker';
 requires 'File::Slurper';
 requires 'YAML';
 requires 'Test::Output';
-requires 'Test::MockFile';
