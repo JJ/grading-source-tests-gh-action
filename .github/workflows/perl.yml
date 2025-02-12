@@ -15,6 +15,6 @@ jobs:
       with:
         packages: cpanminus
     - name: Install dependencies
-      run: cpanm --sudo -v --installdeps .
+      run: cpanm --sudo -n -v --installdeps .
     - name: Test perl
       run: prove
