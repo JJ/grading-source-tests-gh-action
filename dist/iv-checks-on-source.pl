@@ -10218,7 +10218,7 @@ $fatpacked{"Objetivos.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'OBJET
     my @repo_files = @{$_[0]};
     my $README = $_[1];
     doing( "🎯 Objetivo 0" );
-    for my $f (qw( README.md .gitignore LICENSE )) {
+    for my $f (qw(.gitignore LICENSE )) {
       if ( grep( /$f/, @repo_files) )  {
         say all_good( "🗄 $f presente" );
       } else {
@@ -10226,7 +10226,12 @@ $fatpacked{"Objetivos.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'OBJET
       }
     }
   
+    README_contiene_con_mensaje( "configuración", $README );
     README_no_contiene_con_mensaje( "aplicación", $README );
+  
+    comprueba_con_mensaje( @repo_files > 3,
+                           "El número de ficheros en el repo parece correcto",
+                           "Quizás te has olvidado incluir algún fichero. Consulta el guión" );
   
     end_group();
   }
@@ -10397,7 +10402,7 @@ $fatpacked{"Utility.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'UTILITY
     if ( index( $README, $cadena ) >= 0 ) {
       say all_good("El README contiene «$cadena»");
     } else {
-      error_on_file( sorry("El README no contiene «$cadena»"), "README.md" );
+      error_on_file( sorry("El README no contiene «$cadena».\nPor favor, consulta el guión del objetivo para ver por qué es necesario."), "README.md" );
     }
   }
   
@@ -10405,7 +10410,7 @@ $fatpacked{"Utility.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'UTILITY
     if ( index( $README, $cadena ) < 0 ) {
       say all_good("El README no contiene «$cadena»");
     } else {
-      error_on_file( sorry("El README no debe contener «$cadena». Consulta el guión para ver por qué esto es un error"), "README.md" );
+      error_on_file( sorry("El README no debe contener «$cadena». Consulta el guión del objetivo para ver por qué esto es un error"), "README.md" );
     }
   }
   
