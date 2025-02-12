@@ -10217,7 +10217,6 @@ $fatpacked{"Objetivos.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'OBJET
   sub objetivo_0 {
     my @repo_files = @{$_[0]};
     my $README = $_[1];
-    doing( "🎯 Objetivo 0" );
     for my $f (qw(.gitignore LICENSE )) {
       if ( grep( /$f/, @repo_files) )  {
         say all_good( "🗄 $f presente" );
@@ -10233,7 +10232,6 @@ $fatpacked{"Objetivos.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'OBJET
                            "El número de ficheros en el repo parece correcto",
                            "Quizás te has olvidado incluir algún fichero. Consulta el guión" );
   
-    end_group();
   }
   
   sub objetivo_2 {
@@ -10333,38 +10331,9 @@ $fatpacked{"Objetivos.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'OBJET
     end_group();
   }
   
-  # Funciones de utilidad
+  "Objetivo final";
   
   
-  sub comprueba_caps {
-    my $nombre_fichero = shift;
-    my @files = (ref($nombre_fichero) eq 'ARRAY')?@$nombre_fichero:($nombre_fichero);
-    for my $file (@files) {
-      if ( $file =~ /[A-Z]/ ) {
-        error (sorry( "⚠ «$file» tiene mayúsculas, no una buena práctica en repos ⚠" ));
-      }
-    }
-  }
-  
-  sub file_present {
-    my ($file, $ls_files_ref, $name ) = @_;
-    my @files = (ref($file) eq 'ARRAY')?@$file:($file);
-    say all_good("Buscando @files en @$ls_files_ref");
-    for my $a_file (@files ) {
-      comprueba_con_mensaje(  grep( /$a_file/, @$ls_files_ref ),
-                 "Fichero $name → $a_file presente",
-                 "Fichero $name → $a_file no está presente" );
-    }
-  
-  }
-  
-  sub clave_presente {
-    my $iv = shift;
-    my $clave = shift;
-    comprueba_con_mensaje( $iv->{$clave}, "🗝️ «$clave» presente", "Falta clave «$clave»" );
-  }
-  
-  1;
 OBJETIVOS
 
 $fatpacked{"Utility.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'UTILITY';
@@ -10420,6 +10389,34 @@ $fatpacked{"Utility.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'UTILITY
       &$wrapped_function( @_ );
       end_group();
     }
+  }
+  
+  sub comprueba_caps {
+    my $nombre_fichero = shift;
+    my @files = (ref($nombre_fichero) eq 'ARRAY')?@$nombre_fichero:($nombre_fichero);
+    for my $file (@files) {
+      if ( $file =~ /[A-Z]/ ) {
+        error (sorry( "⚠ «$file» tiene mayúsculas, no una buena práctica en repos ⚠" ));
+      }
+    }
+  }
+  
+  sub file_present {
+    my ($file, $ls_files_ref, $name ) = @_;
+    my @files = (ref($file) eq 'ARRAY')?@$file:($file);
+    say all_good("Buscando @files en @$ls_files_ref");
+    for my $a_file (@files ) {
+      comprueba_con_mensaje(  grep( /$a_file/, @$ls_files_ref ),
+                 "Fichero $name → $a_file presente",
+                 "Fichero $name → $a_file no está presente" );
+    }
+  
+  }
+  
+  sub clave_presente {
+    my $iv = shift;
+    my $clave = shift;
+    comprueba_con_mensaje( $iv->{$clave}, "🗝️ «$clave» presente", "Falta clave «$clave»" );
   }
   
   "Yay"
