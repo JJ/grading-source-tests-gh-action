@@ -47,7 +47,7 @@ if ($@) {
 }
 $iv->{'CONFIGFILE'} = $file;
 
-objetivo_1( $iv, \@repo_files );
+objetivo_2( $iv, \@repo_files );
 
 exit_action() if $fase < 3;
 

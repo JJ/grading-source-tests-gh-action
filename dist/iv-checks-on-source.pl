@@ -10214,7 +10214,7 @@ $fatpacked{"Objetivos.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'OBJET
     end_group();
   }
   
-  sub objetivo_1 {
+  sub objetivo_2 {
     doing( "🎯 Objetivo 1" );
     my $iv = shift;
     for my $k (qw(lenguaje entidad)) {
@@ -14045,7 +14045,7 @@ if ($@) {
 }
 $iv->{'CONFIGFILE'} = $file;
 
-objetivo_1( $iv, \@repo_files );
+objetivo_2( $iv, \@repo_files );
 
 exit_action() if $fase < 3;
 

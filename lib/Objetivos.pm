@@ -21,7 +21,7 @@ sub objetivo_0 {
   end_group();
 }
 
-sub objetivo_1 {
+sub objetivo_2 {
   doing( "🎯 Objetivo 1" );
   my $iv = shift;
   for my $k (qw(lenguaje entidad)) {
