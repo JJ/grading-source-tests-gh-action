@@ -25,7 +25,7 @@ sub objetivo_0 {
   my @repo_files = @{$_[0]};
   my $README = $_[1];
   doing( "🎯 Objetivo 0" );
-  for my $f (qw( README.md .gitignore LICENSE )) {
+  for my $f (qw(.gitignore LICENSE )) {
     if ( grep( /$f/, @repo_files) )  {
       say all_good( "🗄 $f presente" );
     } else {
