@@ -52,4 +52,32 @@ sub groupify( $wrapped_function, $group_name ) {
   }
 }
 
+sub comprueba_caps {
+  my $nombre_fichero = shift;
+  my @files = (ref($nombre_fichero) eq 'ARRAY')?@$nombre_fichero:($nombre_fichero);
+  for my $file (@files) {
+    if ( $file =~ /[A-Z]/ ) {
+      error (sorry( "⚠ «$file» tiene mayúsculas, no una buena práctica en repos ⚠" ));
+    }
+  }
+}
+
+sub file_present {
+  my ($file, $ls_files_ref, $name ) = @_;
+  my @files = (ref($file) eq 'ARRAY')?@$file:($file);
+  say all_good("Buscando @files en @$ls_files_ref");
+  for my $a_file (@files ) {
+    comprueba_con_mensaje(  grep( /$a_file/, @$ls_files_ref ),
+               "Fichero $name → $a_file presente",
+               "Fichero $name → $a_file no está presente" );
+  }
+
+}
+
+sub clave_presente {
+  my $iv = shift;
+  my $clave = shift;
+  comprueba_con_mensaje( $iv->{$clave}, "🗝️ «$clave» presente", "Falta clave «$clave»" );
+}
+
 "Yay"
