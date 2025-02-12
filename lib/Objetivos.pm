@@ -36,6 +36,10 @@ sub objetivo_0 {
   README_contiene_con_mensaje( "configuración", $README );
   README_no_contiene_con_mensaje( "aplicación", $README );
 
+  comprueba_con_mensaje( @repo_files > 3,
+                         "El número de ficheros en el repo parece correcto",
+                         "Quizás te has olvidado incluir algún fichero. Consulta el guión" );
+
   end_group();
 }
 

@@ -10,7 +10,7 @@ use Objetivos;
 use Test::Output;
 use File::Slurper qw(read_text);
 
-my @all_repo_files = qw( README.md .gitignore LICENSE );
+my @all_repo_files = qw( README.md .gitignore LICENSE configuración.png);
 
 subtest "Funciones de utilidad" => sub {
   plan tests => 3;
@@ -43,11 +43,11 @@ subtest "Funciones de utilidad" => sub {
 };
 
 subtest "Objetivo 0" => sub {
-  plan tests => 3;
+  plan tests => 4;
   my $fake_readme_dir = "t/data";
   my $current_dir = `pwd`;
   chop( $current_dir );
-  my @mock_repo_files = qw( README.md .gitignore LICENSE );
+  my @mock_repo_files = @all_repo_files;
   my $fakeREADME=read_text("$fake_readme_dir/README.md");
   utf8::encode($fakeREADME);
   my $returnedREADME;
@@ -76,6 +76,12 @@ subtest "Objetivo 0" => sub {
                qr/no debe contener/s,
                "Incluye cadena prohibida" );
 
+  pop @mock_repo_files;
+  stdout_like( sub {
+    $returnedREADME = objetivo_0( \@mock_repo_files, $fakeREADME );
+  },
+               qr/no debe contener/s,
+               "Quizás te has olvidado" );
 
 
 };
