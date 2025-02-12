@@ -31,8 +31,6 @@ utf8::encode($README);
 
 objetivo_0(\@repo_files, $README);
 
-say "Exit Code ", $GitHub::Actions::EXIT_CODE;
-
 exit_action() if $fase <= 1;
 
 # Fase 2
