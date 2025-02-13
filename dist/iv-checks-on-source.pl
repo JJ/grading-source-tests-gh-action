@@ -10215,7 +10215,7 @@ $fatpacked{"Objetivos.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'OBJET
   }
   
   sub objetivo_0 {
-    say @_;
+    say "Argumentos Objetivo 0", @_;
     my @repo_files = @{$_[0]};
     my $README = $_[1];
     for my $f (qw(.gitignore LICENSE )) {
