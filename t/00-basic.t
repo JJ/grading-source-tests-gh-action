@@ -45,9 +45,12 @@ subtest "Funciones para objetivos" => sub {
     say "Hello $world";
   };
 
-  my $groupified_hello = groupify( $hello, "GROUP_HELLO" );
+  my $arg = "Test";
+  my $output = stdout_from { $hello->($arg) };
+  my $group_name =  "GROUP_HELLO";
+  my $groupified_hello = groupify( $hello, $group_name);
 
-  stdout_like( sub { $groupified_hello->( "Test" ) }, qr/GROUP_HELLO/, "Can groupify" );
+  stdout_like( sub { $groupified_hello->( $arg ) }, qr/$group_name.+$output/s, "Can groupify" );
 
 };
 
