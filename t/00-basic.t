@@ -43,7 +43,7 @@ subtest "Funciones de utilidad" => sub {
 subtest "Funciones para objetivos" => sub {
   plan tests => 1;
   sub hello {
-    my $world = @_[0];
+    my $world = $_[0];
     say "Hello $world";
   };
 
@@ -60,9 +60,9 @@ subtest "Envolviendo objetivos" => sub {
   plan tests => 1;
   my @ls_files = qw(foo bar baz quux);
   my $fake_readme = "# README \n configuración";
-  my $groupified_objetivo_0 = groupify( objetivo_0, "Objetivo 0" );
+  my $groupified_objetivo_0 = groupify( \&objetivo_0, "Objetivo 0" );
 
-  stdout_like( sub { $groupified_objetivo_0->( \@ls_files, $fake_readme ) }, qr/foo/s, "Can groupify objetivo 0" );
+  stdout_like( sub { $groupified_objetivo_0->( \@ls_files, $fake_readme ) }, qr/Falta LICENSE/s, "Can groupify objetivo 0" );
 };
 
 done_testing;

@@ -10215,7 +10215,6 @@ $fatpacked{"Objetivos.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'OBJET
   }
   
   sub objetivo_0 {
-    say "Argumentos Objetivo 0", @_;
     my @repo_files = @{$_[0]};
     my $README = $_[1];
     for my $f (qw(.gitignore LICENSE )) {
@@ -10387,7 +10386,7 @@ $fatpacked{"Utility.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'UTILITY
   sub groupify( $wrapped_function, $group_name ) {
     return sub {
       doing( $group_name );
-      &$wrapped_function( @_ );
+      $wrapped_function->( @_ );
       end_group();
     }
   }
@@ -14045,7 +14044,7 @@ my $student_repo = Git->repository ( Directory => "." );
 my @repo_files = $student_repo->command("ls-files");
 my $README = pre_objetivo_0(\@repo_files);
 
-groupify( objetivo_0, "Objetivo 1" )->(\@repo_files, $README);
+groupify( \&objetivo_0, "Objetivo 0" )->(\@repo_files, $README);
 
 exit_action() if $fase <= 1;
 
