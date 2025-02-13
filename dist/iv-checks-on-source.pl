@@ -10371,7 +10371,7 @@ $fatpacked{"Utility.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'UTILITY
     if ( index( $README, $cadena ) >= 0 ) {
       say all_good("El README contiene «$cadena»");
     } else {
-      error_on_file( sorry("El README no contiene «$cadena».\nPor favor, consulta el guión del objetivo para ver por qué es necesario."), "README.md" );
+      error( sorry("El README no contiene «$cadena».\nPor favor, consulta el guión del objetivo para ver por qué es necesario."));
     }
   }
   
@@ -10379,7 +10379,7 @@ $fatpacked{"Utility.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'UTILITY
     if ( index( $README, $cadena ) < 0 ) {
       say all_good("El README no contiene «$cadena»");
     } else {
-      error_on_file( sorry("El README no debe contener «$cadena». Consulta el guión del objetivo para ver por qué esto es un error"), "README.md" );
+      error( sorry("El README no debe contener «$cadena». Consulta el guión del objetivo para ver por qué esto es un error") );
     }
   }
   
