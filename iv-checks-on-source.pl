@@ -27,7 +27,7 @@ my $student_repo = Git->repository ( Directory => "." );
 my @repo_files = $student_repo->command("ls-files");
 my $README = pre_objetivo_0(\@repo_files);
 
-objetivo_0(\@repo_files, $README);
+groupify( objetivo_0, "Objetivo 1" )->(\@repo_files, $README);
 
 exit_action() if $fase <= 1;
 
