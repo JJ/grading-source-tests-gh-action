@@ -4,6 +4,8 @@ use v5.36;
 use lib qw(lib ../lib);
 
 use Utility;
+use Objetivos;
+
 use Test::Output;
 
 my $BIEN= "Bien";
@@ -39,19 +41,28 @@ subtest "Funciones de utilidad" => sub {
 };
 
 subtest "Funciones para objetivos" => sub {
-
-  my $hello = sub {
-    my $world = shift;
+  plan tests => 1;
+  sub hello {
+    my $world = @_[0];
     say "Hello $world";
   };
 
   my $arg = "Test";
-  my $output = stdout_from { $hello->($arg) };
+  my $output = stdout_from { hello($arg) };
   my $group_name =  "GROUP_HELLO";
-  my $groupified_hello = groupify( $hello, $group_name);
+  my $groupified_hello = groupify( \&hello, $group_name);
 
   stdout_like( sub { $groupified_hello->( $arg ) }, qr/$group_name.+$output/s, "Can groupify" );
 
+};
+
+subtest "Envolviendo objetivos" => sub {
+  plan tests => 1;
+  my @ls_files = qw(foo bar baz quux);
+  my $fake_readme = "# README \n configuración";
+  my $groupified_objetivo_0 = groupify( objetivo_0, "Objetivo 0" );
+
+  stdout_like( sub { $groupified_objetivo_0->( \@ls_files, $fake_readme ) }, qr/foo/s, "Can groupify objetivo 0" );
 };
 
 done_testing;

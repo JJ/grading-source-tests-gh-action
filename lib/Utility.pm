@@ -46,8 +46,9 @@ sub README_no_contiene_con_mensaje( $cadena, $README)  {
 
 sub groupify( $wrapped_function, $group_name ) {
   return sub {
+    say "Argumentos ", @_;
     doing( $group_name );
-    &$wrapped_function( @_ );
+    $wrapped_function->( @_ );
     end_group();
   }
 }
