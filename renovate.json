@@ -5,7 +5,7 @@
   ],
   "packageRules": [
     {
-      "managers": ["cpan"],
+      "managers": ["cpanfile"],
       "enabled": false
     }
   ]
