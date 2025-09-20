@@ -37,7 +37,7 @@ sub objetivo_0 {
 
   comprueba_con_mensaje( @repo_files > 3,
                          "El número de ficheros en el repo parece correcto",
-                         "Quizás te has olvidado incluir algún fichero, solo tengo los ficheros ".join("\n",@repo_files)."Consulta el guión" );
+                         "Quizás te has olvidado incluir algún fichero, solo tengo los ficheros ".join("\n",@repo_files)."\nConsulta el guión" );
 
 }
 
