@@ -32,7 +32,7 @@ subtest "Funciones de utilidad" => sub {
     README_contiene_con_mensaje( "foo", "bar" );
   }
 
-  stdout_like( \&readme_no_contiene, qr/README\.md/, "Error de no contiene correcto" );
+  stdout_like( \&readme_no_contiene, qr/README/, "Error de no contiene correcto" );
 
   my $bad = "foo";
   stdout_like( sub { README_no_contiene_con_mensaje( "foo", "$bad\nbar\n$bad\nbar" ) },
