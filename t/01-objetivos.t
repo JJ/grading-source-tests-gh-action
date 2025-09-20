@@ -13,7 +13,7 @@ use File::Slurper qw(read_text);
 my @all_repo_files = qw( README.md .gitignore LICENSE configuración.png);
 
 subtest "Funciones de utilidad" => sub {
-  plan tests => 3;
+  plan tests => 4;
   my $fake_readme_dir = "t/data";
   my $current_dir = `pwd`;
   chop( $current_dir );
@@ -39,7 +39,14 @@ subtest "Funciones de utilidad" => sub {
                  chdir( $current_dir );
                },
              qr/no tiene nada/s,
-             "Testeando comprobaciones con README vacío" );
+               "Testeando comprobaciones con README vacío" );
+
+  stdout_like( sub {
+                 README_contiene_con_mensaje("configuración","# Configuración")
+               },
+               qr/El README contiene/s,
+               "Testeando configuración independiente de las mayúsculas"
+               );
 };
 
 subtest "Objetivo 0" => sub {
