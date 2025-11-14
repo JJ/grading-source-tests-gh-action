@@ -50,7 +50,7 @@ sub objetivo_2 {
                "🗝️ $k no está presente en «$iv->{'CONFIGFILE'}»"
              );
   }
-  comprueba_caps( $iv->{'entidad'} );
+  comprueba_caps( $iv->{'entidad'}, "iv.yaml" );
   if ($iv->{'entidad'}) {
     my $repo_files = shift;
     file_present( $iv->{'entidad'}, $repo_files, "Con la entidad" );

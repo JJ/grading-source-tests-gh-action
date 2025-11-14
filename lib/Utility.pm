@@ -54,10 +54,11 @@ sub groupify( $wrapped_function, $group_name ) {
 
 sub comprueba_caps {
   my $nombre_fichero = shift;
+  my $contexto = shift;
   my @files = (ref($nombre_fichero) eq 'ARRAY')?@$nombre_fichero:($nombre_fichero);
   for my $file (@files) {
     if ( $file =~ /[A-Z]/ ) {
-      error (sorry( "⚠ «$file» tiene mayúsculas, no una buena práctica en repos ⚠" ));
+      error (sorry( "⚠ En $contexto, «$file» tiene mayúsculas, no es una buena práctica en repos ⚠" ));
     }
   }
 }
