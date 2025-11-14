@@ -12,3 +12,5 @@ else
 	fatpack pack iv-checks-on-source.pl > dist/iv-checks-on-source.pl
 endif
 
+test:
+	prove
