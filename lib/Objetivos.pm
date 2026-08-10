@@ -25,6 +25,12 @@ sub pre_objetivo_0 {
 sub objetivo_0 {
   my @repo_files = @{$_[0]};
   my $README = $_[1];
+  comprueba_con_mensaje( @repo_files > 3,
+                         "El número de ficheros en el repo parece correcto",
+                         "Quizás te has olvidado incluir algún fichero, solo tengo los ficheros ".
+			 join("\n",@repo_files)."\nConsulta el guión"
+		       );
+
   for my $f (qw(.gitignore LICENSE )) {
     if ( grep( /$f/, @repo_files) )  {
       say all_good( "🗄 $f presente" );
@@ -56,10 +62,6 @@ sub objetivo_0 {
     detecta_falta_verbos_logica( $texto ),
     detecta_descripcion_corta( $texto ),
   );
-
-  comprueba_con_mensaje( @repo_files > 3,
-                         "El número de ficheros en el repo parece correcto",
-                         "Quizás te has olvidado incluir algún fichero, solo tengo los ficheros ".join("\n",@repo_files)."\nConsulta el guión" );
 
 }
 
