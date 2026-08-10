@@ -50,7 +50,7 @@ subtest "Funciones de utilidad" => sub {
 };
 
 subtest "Objetivo 0" => sub {
-  plan tests => 4;
+  plan tests => 6;
   my $fake_readme_dir = "t/data";
   my $current_dir = `pwd`;
   chop( $current_dir );
@@ -63,7 +63,7 @@ subtest "Objetivo 0" => sub {
   stdout_like( sub {
     $returnedREADME = objetivo_0( \@mock_repo_files, $fakeREADME );
   },
-             qr/presente.+presente.+configuración.+aplicación/s,
+             qr/presente.+presente.+configuración/s,
              "Testeando comprobaciones de contenido" );
 
   chdir( $current_dir ) || die "No puedo cambiarme al original $!";
@@ -75,22 +75,40 @@ subtest "Objetivo 0" => sub {
                  qr/Falta .gitignore/s,
                  "Falta algún fichero" );
 
-  $fakeREADME .= "aplicación";
   @mock_repo_files = @all_repo_files;
+
+  # Describir la solución en vez del problema es un error fatal, pero se
+  # detecta por patrón (no por la simple presencia de la palabra
+  # «aplicación», que puede aparecer de forma inocua en el texto).
+  my $fakeREADME_solucion = $fakeREADME . " Quiero hacer una aplicación web para esto.";
+  stdout_like( sub {
+    $returnedREADME = objetivo_0( \@mock_repo_files, $fakeREADME_solucion );
+  },
+               qr/solución técnica/s,
+               "Describir la solución en vez del problema es un error fatal" );
+
+  my $fakeREADME_neutra = $fakeREADME . " Se aplicará un algoritmo sobre la aplicación web resultante.";
+  stdout_unlike( sub {
+    $returnedREADME = objetivo_0( \@mock_repo_files, $fakeREADME_neutra );
+  },
+               qr/solución técnica/s,
+               "Mencionar «aplicación» de pasada no es, por sí solo, un error" );
+
+  # Usar solo verbos CRUD/almacenamiento, sin ninguna palabra de lógica de
+  # negocio, es también un error fatal.
+  my $fakeREADME_crud = "Los usuarios podrán buscar información y enviar mensajes a otros usuarios.";
+  stdout_like( sub {
+    $returnedREADME = objetivo_0( \@mock_repo_files, $fakeREADME_crud );
+  },
+               qr/CRUD\/almacenamiento/s,
+               "Usar solo verbos CRUD sin lógica de negocio es un error fatal" );
+
+  @mock_repo_files = qw( README.md .gitignore LICENSE );
   stdout_like( sub {
     $returnedREADME = objetivo_0( \@mock_repo_files, $fakeREADME );
   },
-               qr/no debe contener/s,
-               "Incluye cadena prohibida" );
-
-  pop @mock_repo_files;
-  stdout_like( sub {
-    $returnedREADME = objetivo_0( \@mock_repo_files, $fakeREADME );
-  },
-               qr/no debe contener/s,
-               "Quizás te has olvidado" );
-
-
+               qr/Quizás te has olvidado/s,
+               "Avisa si el número de ficheros del repo parece escaso" );
 };
 
 

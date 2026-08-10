@@ -1,4 +1,5 @@
 use Utility;
+use AnalisisProblema;
 
 use strict;
 use warnings;
@@ -33,7 +34,28 @@ sub objetivo_0 {
   }
 
   README_contiene_con_mensaje( "configuración", $README );
-  README_no_contiene_con_mensaje( "aplicación", $README );
+
+  my $texto = limpia_texto( $README );
+
+  # Errores fatales: hacen fallar la Action. Cada comprobación exige una
+  # señal bastante inequívoca de que se está describiendo la solución en
+  # vez del problema, precisamente para no generar falsos positivos que
+  # impidan admitir una entrega correcta.
+  informa_hallazgos( 'error',
+    "No se detecta que se esté describiendo la solución en vez del problema",
+    detecta_solucion_tecnica( $texto ),
+    detecta_verbos_crud_exclusivos( $texto ),
+  );
+
+  # Advertencias: no bloquean la entrega, pero orientan al estudiante.
+  informa_hallazgos( 'warning',
+    "No se detectan advertencias sobre la descripción del problema",
+    detecta_deseo_cliente( $texto ),
+    detecta_problema_vago( $texto ),
+    detecta_multiples_problemas( $texto ),
+    detecta_falta_verbos_logica( $texto ),
+    detecta_descripcion_corta( $texto ),
+  );
 
   comprueba_con_mensaje( @repo_files > 3,
                          "El número de ficheros en el repo parece correcto",

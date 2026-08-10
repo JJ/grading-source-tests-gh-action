@@ -44,6 +44,30 @@ sub README_no_contiene_con_mensaje( $cadena, $README)  {
   }
 }
 
+# Cuando hay una advertencia, no bloqueante
+sub advierte {
+  return "⚠️🍋 " . shift
+}
+
+# Convierte una lista de hallazgos (mensajes ya redactados) en avisos de
+# GitHub Actions. Si la lista está vacía se informa de que la comprobación
+# ha ido bien, en vez de quedarse en silencio.
+# $tipo vale 'error' (falla la Action) o 'warning' (no bloquea la entrega).
+sub informa_hallazgos {
+  my ( $tipo, $mensaje_ok, @hallazgos ) = @_;
+  if ( @hallazgos ) {
+    for my $hallazgo (@hallazgos) {
+      if ( $tipo eq 'error' ) {
+        error( sorry( $hallazgo ) );
+      } else {
+        warning( advierte( $hallazgo ) );
+      }
+    }
+  } else {
+    say all_good( $mensaje_ok );
+  }
+}
+
 sub groupify( $wrapped_function, $group_name ) {
   return sub {
     doing( $group_name );
