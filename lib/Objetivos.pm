@@ -23,7 +23,6 @@ sub pre_objetivo_0 {
 }
 
 sub objetivo_0 {
-  doing( "🎯 Objetivo 0" );
   my @repo_files = @{$_[0]};
   my $README = $_[1];
   comprueba_con_mensaje( @repo_files > 3,
