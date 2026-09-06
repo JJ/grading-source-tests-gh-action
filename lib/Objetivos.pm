@@ -66,7 +66,6 @@ sub objetivo_0 {
 }
 
 sub objetivo_2 {
-  doing( "🎯 Objetivo 1" );
   my $iv = shift;
   # $repo_files lo usan tanto la comprobación de la entidad como la del
   # directorio «docs», así que se recoge aquí en vez de dentro de un if.
@@ -92,11 +91,9 @@ sub objetivo_2 {
   } else {
     warning( advierte( "No hay un directorio «docs» en el repositorio; la documentación del proyecto debe ir en «docs/»" ) );
   }
-  end_group();
 }
 
 sub objetivo_3 {
-  doing( "🎯 Objetivo 3" );
   my $iv = shift;
   my $README = shift;
   my $repo_files = shift;
@@ -111,11 +108,9 @@ sub objetivo_3 {
   README_contiene_con_mensaje( "$iv->{'automatizar'}{'orden'} check", $README );
   set_output( 'ORDEN', $iv->{'automatizar'}{'orden'} );
   set_env( 'ORDEN', $iv->{'automatizar'}{'orden'} );
-  end_group();
 }
 
 sub objetivo_4 {
-  doing( "🎯 Objetivo 4" );
   my $iv = shift;
   my $README = shift;
   my $repo_files = shift;
@@ -124,30 +119,24 @@ sub objetivo_4 {
   file_present( $iv->{'test'}, $repo_files, "Con un fichero de test" );
   comprueba_caps( $iv->{'test'} );
   README_contiene_con_mensaje( "$iv->{'automatizar'}{'orden'} test", $README );
-  end_group();
 }
 
 sub objetivo_5 {
-  doing( "🎯 Objetivo 5" );
   my $iv = shift;
   my $repo_files = shift;
   say all_good("Buscando el Dockerfile");
   file_present( 'Dockerfile', $repo_files, "Dockerfile" );
-  end_group();
 }
 
 sub objetivo_6 {
-  doing( "🎯 Objetivo 6" );
   my $iv = shift;
   my $repo_files = shift;
   clave_presente( $iv,  'CI' );
   file_present( $iv->{'CI'}, $repo_files, "Configuración CI" ) if $iv->{'CI'};
   comprueba_caps( $iv->{'CI'} );
-  end_group();
 }
 
 sub objetivo_7 {
-  doing( "🎯 Objetivo 7" );
   my $iv = shift;
   my $repo_files = shift;
   clave_presente( $iv,  'configuracion' );
@@ -159,11 +148,9 @@ sub objetivo_7 {
     error (sorry( "⚠  .gitignore no evita los ficheros de configuración ⚠" ));
   }
 
-  end_group();
 }
 
 sub objetivo_8 {
-  doing( "🎯 Objetivo 8" );
   my $iv = shift;
   clave_presente( $iv,  'framework' );
   if ( $iv->{'framework'} !~ /(express|flask)/ ) {
@@ -172,7 +159,6 @@ sub objetivo_8 {
     error (sorry( "⚠ ¿Te has pensado bien lo de elegir ".$iv->{'framework'}." como framework? ⚠" ));
   }
 
-  end_group();
 }
 
 "Objetivo final";

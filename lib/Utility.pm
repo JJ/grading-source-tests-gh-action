@@ -1,12 +1,6 @@
 use GitHub::Actions;
 use v5.36;
 
-# Imprime cabeceras de objetivo/hito, principalmente
-sub doing {
-  my $what = shift;
-  start_group "\t✔ Comprobando $what\n";
-}
-
 # Cuando los tests van bien
 sub all_good {
   return "✅🍊️‍🔥 " . shift
@@ -68,9 +62,10 @@ sub informa_hallazgos {
   }
 }
 
-sub groupify( $wrapped_function, $group_name ) {
+sub call_objective_with( $objective_number, $wrapped_function ) {
+  my $group_name = "🎯 Objetivo $objective_number";
   return sub {
-    doing( $group_name );
+    start_group "\t✔ Comprobando $group_name\n";
     $wrapped_function->( @_ );
     end_group();
   }

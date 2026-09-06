@@ -18,7 +18,9 @@ my $fase = $ENV{'objetivo'};
 my $config_file = $ENV{'CONFIGFILE'};
 
 # Comenzando
-groupify( sub { say "Objetivo $fase" }, "Metadatos" )->();
+start_group "\t✔ Comprobando Metadatos\n";
+say "Objetivo $fase";
+end_group();
 
 # Previa
 my $student_repo = Git->repository ( Directory => "." );
@@ -27,7 +29,7 @@ my $student_repo = Git->repository ( Directory => "." );
 my @repo_files = $student_repo->command("ls-files");
 my $README = pre_objetivo_0(\@repo_files);
 
-groupify( \&objetivo_0, "Objetivo 0" )->(\@repo_files, $README);
+call_objective_with( 0, \&objetivo_0 )->(\@repo_files, $README);
 
 exit_action() if $fase <= 1;
 
@@ -44,15 +46,15 @@ if ($@) {
 }
 $iv->{'CONFIGFILE'} = $file;
 
-objetivo_2( $iv, \@repo_files );
+call_objective_with( 2, \&objetivo_2 )->( $iv, \@repo_files );
 
 exit_action() if $fase < 3;
 
-objetivo_3( $iv, $README, \@repo_files );
+call_objective_with( 3, \&objetivo_3 )->( $iv, $README, \@repo_files );
 
 exit_action() if $fase < 4;
 
-objetivo_4( $iv, $README, \@repo_files );
+call_objective_with( 4, \&objetivo_4 )->( $iv, $README, \@repo_files );
 
 exit_action() if $fase < 5;
 
@@ -66,19 +68,19 @@ if ( -f "DOCKER_USER" ) {
   set_env( 'docker_user', $ENV{'user'} );
 }
 
-objetivo_5( $iv,  \@repo_files );
+call_objective_with( 5, \&objetivo_5 )->( $iv,  \@repo_files );
 
 exit_action() if $fase < 6;
 
-objetivo_6( $iv,  \@repo_files );
+call_objective_with( 6, \&objetivo_6 )->( $iv,  \@repo_files );
 
 exit_action() if $fase < 7;
 
-objetivo_7( $iv,  \@repo_files );
+call_objective_with( 7, \&objetivo_7 )->( $iv,  \@repo_files );
 
 exit_action() if $fase < 8;
 
-objetivo_8( $iv);
+call_objective_with( 8, \&objetivo_8 )->( $iv );
 
 exit_action();
 

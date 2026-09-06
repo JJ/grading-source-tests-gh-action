@@ -49,10 +49,10 @@ subtest "Funciones para objetivos" => sub {
 
   my $arg = "Test";
   my $output = stdout_from { hello($arg) };
-  my $group_name =  "GROUP_HELLO";
-  my $groupified_hello = groupify( \&hello, $group_name);
+  my $objetivo = 7;
+  my $wrapped_hello = call_objective_with( $objetivo, \&hello );
 
-  stdout_like( sub { $groupified_hello->( $arg ) }, qr/$group_name.+$output/s, "Can groupify" );
+  stdout_like( sub { $wrapped_hello->( $arg ) }, qr/Objetivo $objetivo.+$output/s, "Can call_objective_with" );
 
 };
 
@@ -60,9 +60,9 @@ subtest "Envolviendo objetivos" => sub {
   plan tests => 1;
   my @ls_files = qw(foo bar baz quux);
   my $fake_readme = "# README \n configuración";
-  my $groupified_objetivo_0 = groupify( \&objetivo_0, "Objetivo 0" );
+  my $wrapped_objetivo_0 = call_objective_with( 0, \&objetivo_0 );
 
-  stdout_like( sub { $groupified_objetivo_0->( \@ls_files, $fake_readme ) }, qr/Falta LICENSE/s, "Can groupify objetivo 0" );
+  stdout_like( sub { $wrapped_objetivo_0->( \@ls_files, $fake_readme ) }, qr/Falta LICENSE/s, "Can call_objective_with objetivo 0" );
 };
 
 done_testing;
