@@ -10444,7 +10444,6 @@ $fatpacked{"Objetivos.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'OBJET
   }
   
   sub objetivo_2 {
-    doing( "🎯 Objetivo 1" );
     my $iv = shift;
     # $repo_files lo usan tanto la comprobación de la entidad como la del
     # directorio «docs», así que se recoge aquí en vez de dentro de un if.
@@ -10470,11 +10469,9 @@ $fatpacked{"Objetivos.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'OBJET
     } else {
       warning( advierte( "No hay un directorio «docs» en el repositorio; la documentación del proyecto debe ir en «docs/»" ) );
     }
-    end_group();
   }
   
   sub objetivo_3 {
-    doing( "🎯 Objetivo 3" );
     my $iv = shift;
     my $README = shift;
     my $repo_files = shift;
@@ -10489,11 +10486,9 @@ $fatpacked{"Objetivos.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'OBJET
     README_contiene_con_mensaje( "$iv->{'automatizar'}{'orden'} check", $README );
     set_output( 'ORDEN', $iv->{'automatizar'}{'orden'} );
     set_env( 'ORDEN', $iv->{'automatizar'}{'orden'} );
-    end_group();
   }
   
   sub objetivo_4 {
-    doing( "🎯 Objetivo 4" );
     my $iv = shift;
     my $README = shift;
     my $repo_files = shift;
@@ -10502,30 +10497,24 @@ $fatpacked{"Objetivos.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'OBJET
     file_present( $iv->{'test'}, $repo_files, "Con un fichero de test" );
     comprueba_caps( $iv->{'test'} );
     README_contiene_con_mensaje( "$iv->{'automatizar'}{'orden'} test", $README );
-    end_group();
   }
   
   sub objetivo_5 {
-    doing( "🎯 Objetivo 5" );
     my $iv = shift;
     my $repo_files = shift;
     say all_good("Buscando el Dockerfile");
     file_present( 'Dockerfile', $repo_files, "Dockerfile" );
-    end_group();
   }
   
   sub objetivo_6 {
-    doing( "🎯 Objetivo 6" );
     my $iv = shift;
     my $repo_files = shift;
     clave_presente( $iv,  'CI' );
     file_present( $iv->{'CI'}, $repo_files, "Configuración CI" ) if $iv->{'CI'};
     comprueba_caps( $iv->{'CI'} );
-    end_group();
   }
   
   sub objetivo_7 {
-    doing( "🎯 Objetivo 7" );
     my $iv = shift;
     my $repo_files = shift;
     clave_presente( $iv,  'configuracion' );
@@ -10537,11 +10526,9 @@ $fatpacked{"Objetivos.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'OBJET
       error (sorry( "⚠  .gitignore no evita los ficheros de configuración ⚠" ));
     }
   
-    end_group();
   }
   
   sub objetivo_8 {
-    doing( "🎯 Objetivo 8" );
     my $iv = shift;
     clave_presente( $iv,  'framework' );
     if ( $iv->{'framework'} !~ /(express|flask)/ ) {
@@ -10550,7 +10537,6 @@ $fatpacked{"Objetivos.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'OBJET
       error (sorry( "⚠ ¿Te has pensado bien lo de elegir ".$iv->{'framework'}." como framework? ⚠" ));
     }
   
-    end_group();
   }
   
   "Objetivo final";
@@ -10561,12 +10547,6 @@ OBJETIVOS
 $fatpacked{"Utility.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'UTILITY';
   use GitHub::Actions;
   use v5.36;
-  
-  # Imprime cabeceras de objetivo/hito, principalmente
-  sub doing {
-    my $what = shift;
-    start_group "\t✔ Comprobando $what\n";
-  }
   
   # Cuando los tests van bien
   sub all_good {
@@ -10629,9 +10609,10 @@ $fatpacked{"Utility.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'UTILITY
     }
   }
   
-  sub groupify( $wrapped_function, $group_name ) {
+  sub call_objective_with( $objective_number, $wrapped_function ) {
+    my $group_name = "🎯 Objetivo $objective_number";
     return sub {
-      doing( $group_name );
+      start_group "\t✔ Comprobando $group_name\n";
       $wrapped_function->( @_ );
       end_group();
     }
@@ -14282,7 +14263,9 @@ my $fase = $ENV{'objetivo'};
 my $config_file = $ENV{'CONFIGFILE'};
 
 # Comenzando
-groupify( sub { say "Objetivo $fase" }, "Metadatos" )->();
+start_group "\t✔ Comprobando Metadatos\n";
+say "Objetivo $fase";
+end_group();
 
 # Previa
 my $student_repo = Git->repository ( Directory => "." );
@@ -14291,7 +14274,7 @@ my $student_repo = Git->repository ( Directory => "." );
 my @repo_files = $student_repo->command("ls-files");
 my $README = pre_objetivo_0(\@repo_files);
 
-groupify( \&objetivo_0, "Objetivo 0" )->(\@repo_files, $README);
+call_objective_with( 0, \&objetivo_0 )->(\@repo_files, $README);
 
 exit_action() if $fase <= 1;
 
@@ -14308,15 +14291,15 @@ if ($@) {
 }
 $iv->{'CONFIGFILE'} = $file;
 
-objetivo_2( $iv, \@repo_files );
+call_objective_with( 2, \&objetivo_2 )->( $iv, \@repo_files );
 
 exit_action() if $fase < 3;
 
-objetivo_3( $iv, $README, \@repo_files );
+call_objective_with( 3, \&objetivo_3 )->( $iv, $README, \@repo_files );
 
 exit_action() if $fase < 4;
 
-objetivo_4( $iv, $README, \@repo_files );
+call_objective_with( 4, \&objetivo_4 )->( $iv, $README, \@repo_files );
 
 exit_action() if $fase < 5;
 
@@ -14330,19 +14313,19 @@ if ( -f "DOCKER_USER" ) {
   set_env( 'docker_user', $ENV{'user'} );
 }
 
-objetivo_5( $iv,  \@repo_files );
+call_objective_with( 5, \&objetivo_5 )->( $iv,  \@repo_files );
 
 exit_action() if $fase < 6;
 
-objetivo_6( $iv,  \@repo_files );
+call_objective_with( 6, \&objetivo_6 )->( $iv,  \@repo_files );
 
 exit_action() if $fase < 7;
 
-objetivo_7( $iv,  \@repo_files );
+call_objective_with( 7, \&objetivo_7 )->( $iv,  \@repo_files );
 
 exit_action() if $fase < 8;
 
-objetivo_8( $iv);
+call_objective_with( 8, \&objetivo_8 )->( $iv );
 
 exit_action();
 
