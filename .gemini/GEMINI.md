@@ -7,7 +7,8 @@
 - Heavy-lift code should be spun off to its own module, included as usual in Perl in the `lib` directory.
 - All new functions need to be tested, with tests with significant names at the `t/` directory. The mainstream `Test::More` library is used. Ask about any other testing module that needs to be made.
 - Messages and output should *always* be in Spanish, this is a Spanich-speaking class
-- The maintainer *always* runs the tests, writes the commit messages and pushes. Do not run the test suite, commit or push: hand over the changed/added tests and code and wait for the maintainer to run them. When fixing a bug, write the failing test first and let the maintainer run it before touching the code being fixed.
+- The maintainer *always* runs the tests, writes the commit messages and pushes. Do not run the test suite, commit or push: hand over the changed/added tests and code and wait for the maintainer to run them.
+- Strict TDD when addressing an issue: write **only** the test first and hand it over. Do not write the implementation in the same turn. The maintainer runs the test and confirms it fails; some issues are already fixed and the test passes as-is.
 
 ## Coding style
 

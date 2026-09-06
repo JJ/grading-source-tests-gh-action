@@ -68,6 +68,9 @@ sub objetivo_0 {
 sub objetivo_2 {
   doing( "🎯 Objetivo 1" );
   my $iv = shift;
+  # $repo_files lo usan tanto la comprobación de la entidad como la del
+  # directorio «docs», así que se recoge aquí en vez de dentro de un if.
+  my $repo_files = shift;
   for my $k (qw(lenguaje entidad)) {
     comprueba_con_mensaje(  $iv->{$k},
                "🗝️ $k está presente en «$iv->{'CONFIGFILE'}»",
@@ -79,8 +82,15 @@ sub objetivo_2 {
   # comprobaciones solo añade ruido poco informativo (issue #6).
   if ($iv->{'entidad'}) {
     comprueba_caps( $iv->{'entidad'}, "iv.yaml" );
-    my $repo_files = shift;
     file_present( $iv->{'entidad'}, $repo_files, "Con la entidad" );
+  }
+  # El guión pide que la documentación del proyecto viva en un directorio
+  # «docs». Falta a menudo y no bloquea la entrega, así que solo se avisa
+  # (issue #15).
+  if ( grep m{^docs/}, @$repo_files ) {
+    say all_good( "📁 El directorio «docs» está presente" );
+  } else {
+    warning( advierte( "No hay un directorio «docs» en el repositorio; la documentación del proyecto debe ir en «docs/»" ) );
   }
   end_group();
 }

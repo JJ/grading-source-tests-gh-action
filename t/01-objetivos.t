@@ -150,6 +150,27 @@ subtest "Objetivo 1: la clave «entidad» ausente o vacía (issue #6)" => sub {
   unlike( $salida_ok, qr/uninitialized value/,
           "entidad definida: sin avisos de valor no inicializado" );
 };
+subtest "Objetivo 1: se avisa si falta el directorio «docs» (issue #15)" => sub {
+  plan tests => 4;
+
+  my $iv = { CONFIGFILE => "iv.yaml", lenguaje => "perl", entidad => "servidor" };
+
+  my $sin_docs = combined_from( sub {
+    objetivo_2( $iv, [ qw( README.md servidor.pl ) ] );
+  } );
+  like( $sin_docs, qr/No hay un directorio «docs»/,
+        "sin docs/: se avisa de que falta el directorio" );
+  like( $sin_docs, qr/::warning::/,
+        "sin docs/: es un aviso, no un error bloqueante" );
+
+  my $con_docs = combined_from( sub {
+    objetivo_2( $iv, [ qw( README.md servidor.pl docs/index.md ) ] );
+  } );
+  like( $con_docs, qr/directorio «docs» está presente/,
+        "con docs/: se reconoce el directorio" );
+  unlike( $con_docs, qr/No hay un directorio «docs»/,
+          "con docs/: no se avisa" );
+};
 
 
 done_testing;
