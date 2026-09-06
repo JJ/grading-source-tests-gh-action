@@ -81,7 +81,6 @@ sub comprueba_caps {
   my $contexto = shift;
   my @files = (ref($nombre_fichero) eq 'ARRAY')?@$nombre_fichero:($nombre_fichero);
   for my $file (@files) {
-    next unless defined($file) && length($file);
     if ( $file =~ /[A-Z]/ ) {
       error (sorry( "⚠ En $contexto, «$file» tiene mayúsculas, no es una buena práctica en repos ⚠" ));
     }
@@ -91,7 +90,6 @@ sub comprueba_caps {
 sub file_present {
   my ($file, $ls_files_ref, $name ) = @_;
   my @files = (ref($file) eq 'ARRAY')?@$file:($file);
-  @files = grep { defined($_) && length($_) } @files;
   say all_good("Buscando @files en @$ls_files_ref");
   for my $a_file (@files ) {
     comprueba_con_mensaje(  grep( /$a_file/, @$ls_files_ref ),

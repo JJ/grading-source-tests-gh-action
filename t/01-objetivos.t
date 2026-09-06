@@ -111,6 +111,45 @@ subtest "Objetivo 0" => sub {
                "Avisa si el número de ficheros del repo parece escaso" );
 };
 
+subtest "Objetivo 1: la clave «entidad» ausente o vacía (issue #6)" => sub {
+  plan tests => 9;
+
+  # Con «entidad:» vacío en iv.yaml, en vez de un mensaje claro el
+  # estudiante solo veía un aviso de Perl poco informativo:
+  # «Use of uninitialized value $file in pattern match».
+  my @casos = (
+    { desc => "ausente",
+      iv   => { CONFIGFILE => "iv.yaml", lenguaje => "perl" } },
+    { desc => "vacía",
+      iv   => { CONFIGFILE => "iv.yaml", lenguaje => "perl", entidad => "" } },
+  );
+
+  for my $caso ( @casos ) {
+    my $salida = combined_from( sub {
+      objetivo_2( $caso->{iv}, [ qw( README.md LICENSE ) ] );
+    } );
+
+    like( $salida, qr/entidad no está presente/,
+          "entidad $caso->{desc}: hay un mensaje informativo sobre «entidad»" );
+    unlike( $salida, qr/uninitialized value|Use of uninitialized/,
+            "entidad $caso->{desc}: no se cuela un aviso de valor no inicializado" );
+    unlike( $salida, qr/tiene mayúsculas/,
+            "entidad $caso->{desc}: no se comprueba el nombre de un fichero vacío" );
+  }
+
+  # El camino feliz sigue funcionando: con «entidad» definida se comprueba
+  # que el fichero correspondiente esté en el repo.
+  my $salida_ok = combined_from( sub {
+    objetivo_2( { CONFIGFILE => "iv.yaml", lenguaje => "perl", entidad => "servidor" },
+                [ qw( README.md servidor.pl ) ] );
+  } );
+  like( $salida_ok, qr/entidad está presente/,
+        "entidad definida: se informa de que la clave está presente" );
+  like( $salida_ok, qr/servidor presente/,
+        "entidad definida: se busca el fichero de la entidad en el repo" );
+  unlike( $salida_ok, qr/uninitialized value/,
+          "entidad definida: sin avisos de valor no inicializado" );
+};
 
 
 done_testing;

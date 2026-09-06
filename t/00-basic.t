@@ -40,29 +40,6 @@ subtest "Funciones de utilidad" => sub {
                "Error de contiene correcto" );
 };
 
-subtest "comprueba_caps y file_present con valores vacíos" => sub {
-  plan tests => 4;
-
-  # Issue #6: «entidad:» vacío en iv.yaml provocaba
-  # «Use of uninitialized value $file in pattern match»
-  my @avisos;
-  local $SIG{__WARN__} = sub { push @avisos, $_[0] };
-
-  my $salida_caps = stdout_from { comprueba_caps( undef, "iv.yaml" ) };
-  is( $salida_caps, "", "comprueba_caps con undef no produce salida" );
-
-  my $salida_present = stdout_from { file_present( undef, [qw(foo bar)], "Con la entidad" ) };
-  unlike( $salida_present, qr/no está presente/,
-          "file_present con undef no reporta fichero ausente" );
-
-  comprueba_caps( "", "iv.yaml" );
-  file_present( "", [qw(foo bar)], "Con la entidad" );
-
-  is( scalar(@avisos), 0, "no se emiten avisos de valor no inicializado" )
-    or diag( "avisos: @avisos" );
-  ok( 1, "no hay excepción con «entidad» vacía" );
-};
-
 subtest "Funciones para objetivos" => sub {
   plan tests => 1;
   sub hello {

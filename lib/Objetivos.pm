@@ -71,11 +71,14 @@ sub objetivo_2 {
   for my $k (qw(lenguaje entidad)) {
     comprueba_con_mensaje(  $iv->{$k},
                "🗝️ $k está presente en «$iv->{'CONFIGFILE'}»",
-               "🗝️ $k no está presente en «$iv->{'CONFIGFILE'}»"
+               "🗝️ $k no está presente (o está vacío) en «$iv->{'CONFIGFILE'}»"
              );
   }
-  comprueba_caps( $iv->{'entidad'}, "iv.yaml" );
+  # Solo se comprueba el nombre de la entidad si trae un valor; si está
+  # vacía o ausente ya se ha avisado arriba y pasar una cadena vacía a las
+  # comprobaciones solo añade ruido poco informativo (issue #6).
   if ($iv->{'entidad'}) {
+    comprueba_caps( $iv->{'entidad'}, "iv.yaml" );
     my $repo_files = shift;
     file_present( $iv->{'entidad'}, $repo_files, "Con la entidad" );
   }
