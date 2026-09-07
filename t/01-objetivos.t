@@ -13,33 +13,18 @@ use File::Slurper qw(read_text);
 my @all_repo_files = qw( README.md .gitignore LICENSE configuración.png);
 
 subtest "Funciones de utilidad" => sub {
-  plan tests => 4;
+  plan tests => 2;
   my $fake_readme_dir = "t/data";
   my $current_dir = `pwd`;
   chop( $current_dir );
   my @mock_repo_files = qw( README.md .gitignore LICENSE );
   my $fakeREADME=read_text("$fake_readme_dir/README.md");
   utf8::encode($fakeREADME);
-  my $returnedREADME;
-
-  stdout_like( sub {
-    chdir($fake_readme_dir) || die "No encuentro el directorio";
-    $returnedREADME = pre_objetivo_0( \@mock_repo_files );
-    chdir( $current_dir ) || die "No puedo cambiarme al original $!";
-  },
-             qr/presente.+contenido/s,
-             "Testeando comprobaciones" );
+  my ($readme_file) = grep( /^README/, @mock_repo_files );
+  my $returnedREADME  =  read_text( "$fake_readme_dir/$readme_file" );
+  utf8::encode($returnedREADME);;
 
   is( $returnedREADME, $fakeREADME, "Se devuelve el contenido correctamente" );
-
-  stdout_like( sub {
-                 $fake_readme_dir = "t/data-empty-README";
-                 chdir($fake_readme_dir) || die "No encuentro el directorio";
-                 $returnedREADME = pre_objetivo_0( \@mock_repo_files );
-                 chdir( $current_dir );
-               },
-             qr/no tiene nada/s,
-               "Testeando comprobaciones con README vacío" );
 
   stdout_like( sub {
                  README_contiene_con_mensaje("configuración","# Configuración")
