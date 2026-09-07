@@ -10395,6 +10395,10 @@ $fatpacked{"Objetivos.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'OBJET
   			 join("\n",@repo_files)."\nConsulta el guión"
   		       );
   
+    comprueba_con_mensaje( $README,
+                           "El fichero README tiene contenido",
+                           "El fichero README no tiene nada" );
+   
     for my $f (qw(.gitignore LICENSE )) {
       if ( grep( /$f/, @repo_files) )  {
         say all_good( "🗄 $f presente" );
@@ -10429,6 +10433,18 @@ $fatpacked{"Objetivos.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'OBJET
   
   }
   
+  sub objetivo_1 {
+    my $repo_files = shift;
+    # El guión pide que la documentación del proyecto viva en un directorio
+    # «docs». Falta a menudo y no bloquea la entrega, así que solo se avisa
+    # (issue #15).
+    if ( grep m{^docs/}, @$repo_files ) {
+      say all_good( "📁 El directorio «docs» está presente" );
+    } else {
+      warning( advierte( "No hay un directorio «docs» en el repositorio; la documentación del proyecto debe ir en «docs/»" ) );
+    }
+  }
+  
   sub objetivo_2 {
     my $iv = shift;
     # $repo_files lo usan tanto la comprobación de la entidad como la del
@@ -10447,14 +10463,7 @@ $fatpacked{"Objetivos.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'OBJET
       comprueba_caps( $iv->{'entidad'}, "iv.yaml" );
       file_present( $iv->{'entidad'}, $repo_files, "Con la entidad" );
     }
-    # El guión pide que la documentación del proyecto viva en un directorio
-    # «docs». Falta a menudo y no bloquea la entrega, así que solo se avisa
-    # (issue #15).
-    if ( grep m{^docs/}, @$repo_files ) {
-      say all_good( "📁 El directorio «docs» está presente" );
-    } else {
-      warning( advierte( "No hay un directorio «docs» en el repositorio; la documentación del proyecto debe ir en «docs/»" ) );
-    }
+  
   }
   
   sub objetivo_3 {
@@ -14266,15 +14275,13 @@ my ($readme_file) = grep( /^README/, @repo_files );
 my $README =  read_text( $readme_file );
 utf8::encode($README);
 
-comprueba_con_mensaje( $README,
-                         "El fichero README tiene contenido",
-                         "El fichero README no tiene nada" );
-
-
-# Øbjetivo 0
+# Objetivo 0
 call_objective_with( 0, \&objetivo_0 )->(\@repo_files, $README);
-
 exit_action() if $fase <= 1;
+
+# Objetivo 1
+call_objective_with( 1, \&objetivo_1 )->(\@repo_files);
+exit_action() if $fase <= 2;
 
 # Fase 2
 my $iv;

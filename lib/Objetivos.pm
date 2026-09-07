@@ -20,7 +20,7 @@ sub objetivo_0 {
   comprueba_con_mensaje( $README,
                          "El fichero README tiene contenido",
                          "El fichero README no tiene nada" );
-  
+ 
   for my $f (qw(.gitignore LICENSE )) {
     if ( grep( /$f/, @repo_files) )  {
       say all_good( "🗄 $f presente" );
