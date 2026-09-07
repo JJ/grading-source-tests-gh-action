@@ -8,6 +8,7 @@ use Git;
 use GitHub::Actions;
 
 use YAML qw(LoadFile);
+use File::Slurper qw(read_text);
 
 use lib "lib";
 
