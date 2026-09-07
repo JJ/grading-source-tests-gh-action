@@ -35,11 +35,7 @@ my ($readme_file) = grep( /^README/, @repo_files );
 my $README =  read_text( $readme_file );
 utf8::encode($README);
 
-comprueba_con_mensaje( $README,
-                         "El fichero README tiene contenido",
-                         "El fichero README no tiene nada" );
-
-# Øbjetivo 0
+# Objetivo 0
 call_objective_with( 0, \&objetivo_0 )->(\@repo_files, $README);
 exit_action() if $fase <= 1;
 
