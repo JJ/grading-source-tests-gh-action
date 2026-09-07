@@ -39,6 +39,10 @@ utf8::encode($README);
 call_objective_with( 0, \&objetivo_0 )->(\@repo_files, $README);
 exit_action() if $fase <= 1;
 
+# Objetivo 1
+call_objective_with( 1, \&objetivo_1 )->(\@repo_files);
+exit_action() if $fase <= 2;
+
 # Fase 2
 my $iv;
 

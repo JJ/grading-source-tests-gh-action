@@ -55,6 +55,18 @@ sub objetivo_0 {
 
 }
 
+sub objetivo_1 {
+  my $repo_files = shift;
+  # El guión pide que la documentación del proyecto viva en un directorio
+  # «docs». Falta a menudo y no bloquea la entrega, así que solo se avisa
+  # (issue #15).
+  if ( grep m{^docs/}, @$repo_files ) {
+    say all_good( "📁 El directorio «docs» está presente" );
+  } else {
+    warning( advierte( "No hay un directorio «docs» en el repositorio; la documentación del proyecto debe ir en «docs/»" ) );
+  }
+}
+
 sub objetivo_2 {
   my $iv = shift;
   # $repo_files lo usan tanto la comprobación de la entidad como la del
@@ -73,14 +85,7 @@ sub objetivo_2 {
     comprueba_caps( $iv->{'entidad'}, "iv.yaml" );
     file_present( $iv->{'entidad'}, $repo_files, "Con la entidad" );
   }
-  # El guión pide que la documentación del proyecto viva en un directorio
-  # «docs». Falta a menudo y no bloquea la entrega, así que solo se avisa
-  # (issue #15).
-  if ( grep m{^docs/}, @$repo_files ) {
-    say all_good( "📁 El directorio «docs» está presente" );
-  } else {
-    warning( advierte( "No hay un directorio «docs» en el repositorio; la documentación del proyecto debe ir en «docs/»" ) );
-  }
+
 }
 
 sub objetivo_3 {

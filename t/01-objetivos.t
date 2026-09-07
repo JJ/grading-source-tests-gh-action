@@ -96,7 +96,27 @@ subtest "Objetivo 0" => sub {
                "Avisa si el número de ficheros del repo parece escaso" );
 };
 
-subtest "Objetivo 1: la clave «entidad» ausente o vacía (issue #6)" => sub {
+subtest "Objetivo 1: se avisa si falta el directorio «docs»" => sub {
+  plan tests => 4;
+
+  my $sin_docs = combined_from( sub {
+    objetivo_1( [ qw( README.md .gitignore LICENSE ) ] );
+  } );
+  like( $sin_docs, qr/No hay un directorio «docs»/,
+        "sin docs/: se avisa de que falta el directorio" );
+  like( $sin_docs, qr/::warning::/,
+        "sin docs/: es un aviso, no un error bloqueante" );
+
+  my $con_docs = combined_from( sub {
+    objetivo_1( [ qw( README.md .gitignore LICENSE docs/index.md ) ] );
+  } );
+  like( $con_docs, qr/directorio «docs» está presente/,
+        "con docs/: se reconoce el directorio" );
+  unlike( $con_docs, qr/No hay un directorio «docs»/,
+          "con docs/: no se avisa" );
+};
+
+subtest "Objetivo 2: la clave «entidad» ausente o vacía" => sub {
   plan tests => 9;
 
   # Con «entidad:» vacío en iv.yaml, en vez de un mensaje claro el
@@ -134,27 +154,6 @@ subtest "Objetivo 1: la clave «entidad» ausente o vacía (issue #6)" => sub {
         "entidad definida: se busca el fichero de la entidad en el repo" );
   unlike( $salida_ok, qr/uninitialized value/,
           "entidad definida: sin avisos de valor no inicializado" );
-};
-subtest "Objetivo 1: se avisa si falta el directorio «docs» (issue #15)" => sub {
-  plan tests => 4;
-
-  my $iv = { CONFIGFILE => "iv.yaml", lenguaje => "perl", entidad => "servidor" };
-
-  my $sin_docs = combined_from( sub {
-    objetivo_2( $iv, [ qw( README.md servidor.pl ) ] );
-  } );
-  like( $sin_docs, qr/No hay un directorio «docs»/,
-        "sin docs/: se avisa de que falta el directorio" );
-  like( $sin_docs, qr/::warning::/,
-        "sin docs/: es un aviso, no un error bloqueante" );
-
-  my $con_docs = combined_from( sub {
-    objetivo_2( $iv, [ qw( README.md servidor.pl docs/index.md ) ] );
-  } );
-  like( $con_docs, qr/directorio «docs» está presente/,
-        "con docs/: se reconoce el directorio" );
-  unlike( $con_docs, qr/No hay un directorio «docs»/,
-          "con docs/: no se avisa" );
 };
 
 
