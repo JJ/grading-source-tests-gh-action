@@ -35,18 +35,17 @@ subtest "Funciones de utilidad" => sub {
 };
 
 subtest "Objetivo 0" => sub {
-  plan tests => 6;
+  plan tests => 7;
   my $fake_readme_dir = "t/data";
   my $current_dir = `pwd`;
   chop( $current_dir );
   my @mock_repo_files = @all_repo_files;
   my $fakeREADME=read_text("$fake_readme_dir/README.md");
   utf8::encode($fakeREADME);
-  my $returnedREADME;
   chdir($fake_readme_dir) || die "No encuentro el directorio";
 
   stdout_like( sub {
-    $returnedREADME = objetivo_0( \@mock_repo_files, $fakeREADME );
+   objetivo_0( \@mock_repo_files, $fakeREADME );
   },
              qr/presente.+presente.+configuración/s,
              "Testeando comprobaciones de contenido" );
@@ -55,7 +54,7 @@ subtest "Objetivo 0" => sub {
 
   @mock_repo_files = qw( README.md LICENSE );
   stdout_like( sub {
-    $returnedREADME = objetivo_0( \@mock_repo_files, $fakeREADME );
+   objetivo_0( \@mock_repo_files, $fakeREADME );
   },
                  qr/Falta .gitignore/s,
                  "Falta algún fichero" );
@@ -67,14 +66,14 @@ subtest "Objetivo 0" => sub {
   # «aplicación», que puede aparecer de forma inocua en el texto).
   my $fakeREADME_solucion = $fakeREADME . " Quiero hacer una aplicación web para esto.";
   stdout_like( sub {
-    $returnedREADME = objetivo_0( \@mock_repo_files, $fakeREADME_solucion );
+   objetivo_0( \@mock_repo_files, $fakeREADME_solucion );
   },
                qr/solución técnica/s,
                "Describir la solución en vez del problema es un error fatal" );
 
   my $fakeREADME_neutra = $fakeREADME . " Se aplicará un algoritmo sobre la aplicación web resultante.";
   stdout_unlike( sub {
-    $returnedREADME = objetivo_0( \@mock_repo_files, $fakeREADME_neutra );
+   objetivo_0( \@mock_repo_files, $fakeREADME_neutra );
   },
                qr/solución técnica/s,
                "Mencionar «aplicación» de pasada no es, por sí solo, un error" );
@@ -83,17 +82,23 @@ subtest "Objetivo 0" => sub {
   # negocio, es también un error fatal.
   my $fakeREADME_crud = "Los usuarios podrán buscar información y enviar mensajes a otros usuarios.";
   stdout_like( sub {
-    $returnedREADME = objetivo_0( \@mock_repo_files, $fakeREADME_crud );
+    objetivo_0( \@mock_repo_files, $fakeREADME_crud );
   },
                qr/CRUD\/almacenamiento/s,
                "Usar solo verbos CRUD sin lógica de negocio es un error fatal" );
 
   @mock_repo_files = qw( README.md .gitignore LICENSE );
   stdout_like( sub {
-    $returnedREADME = objetivo_0( \@mock_repo_files, $fakeREADME );
+    objetivo_0( \@mock_repo_files, $fakeREADME );
   },
                qr/Quizás te has olvidado/s,
                "Avisa si el número de ficheros del repo parece escaso" );
+  
+  stdout_like( sub {
+    objetivo_0( \@mock_repo_files, $fakeREADME );
+  },
+               qr/imagen de la ficha/,
+               "Se detecta que falta la imagen de la ficha" );
 };
 
 subtest "Objetivo 1: se avisa si falta el directorio «docs»" => sub {
