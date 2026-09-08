@@ -10,7 +10,7 @@ use Objetivos;
 use Test::Output;
 use File::Slurper qw(read_text);
 
-my @all_repo_files = qw( README.md .gitignore LICENSE configuración.png);
+my @all_repo_files = qw( README.md .gitignore LICENSE configuración.png ficha_rol.jpg);
 
 subtest "Funciones de utilidad" => sub {
   plan tests => 2;
