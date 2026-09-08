@@ -10395,10 +10395,14 @@ $fatpacked{"Objetivos.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'OBJET
   			 join("\n",@repo_files)."\nConsulta el guión"
   		       );
   
+    comprueba_con_mensaje( grep( /jpe?g$/, @repo_files),
+                           "La imagen de la ficha está incluida",
+                           "No encuentro la imagen de la ficha del juego de rol" );
+  
     comprueba_con_mensaje( $README,
                            "El fichero README tiene contenido",
                            "El fichero README no tiene nada" );
-   
+  
     for my $f (qw(.gitignore LICENSE )) {
       if ( grep( /$f/, @repo_files) )  {
         say all_good( "🗄 $f presente" );
