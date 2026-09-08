@@ -17,6 +17,7 @@ use Objetivos;
 
 my $fase = $ENV{'objetivo'};
 my $config_file = $ENV{'CONFIGFILE'};
+my $WATERMARK = 'IV-26-27-AUTO-GEN';
 
 # Comenzando
 start_group "\t✔ Comprobando Metadatos\n";
@@ -34,6 +35,13 @@ comprueba_con_mensaje( grep( /^README/, @repo_files ),
 my ($readme_file) = grep( /^README/, @repo_files );
 my $README =  read_text( $readme_file );
 utf8::encode($README);
+
+# Detectar watermark antes de evaluar
+if ( $README =~ /$WATERMARK/ ) {
+  error( sorry ("No se permite la utilización de IA generativa en esta tarea. Por favor, consulta el guión"));
+  add_to_job_summary( "# Aviso sobre IA generativa\n\nLa IA generativa impide que alcances correctamente los objetivos de aprendizaje. Por favor, no la uses.");
+  exit_action();
+}
 
 # Objetivo 0
 call_objective_with( 0, \&objetivo_0 )->(\@repo_files, $README);
