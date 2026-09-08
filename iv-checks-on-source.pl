@@ -36,9 +36,9 @@ my ($readme_file) = grep( /^README/, @repo_files );
 my $README =  read_text( $readme_file );
 utf8::encode($README);
 
-# Detectar watermark antes de evaluar
+# Detectar watermark antes de evaluar 
 if ( $README =~ /$WATERMARK/ ) {
-  error( sorry ("No se permite la utilización de IA generativa en esta tarea. Por favor, consulta el guión"));
+  error( sorry ("No se permite la utilización de IA generativa en este objetivo. Por favor, consulta el guión"));
   add_to_job_summary( "# Aviso sobre IA generativa\n\nLa IA generativa impide que alcances correctamente los objetivos de aprendizaje. Por favor, no la uses.");
   exit_action();
 }
